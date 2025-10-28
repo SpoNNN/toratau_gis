@@ -1,20 +1,22 @@
 <?php
 use App\Http\Controllers\RouteController;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\FilterController;
 Route::get('/', function () {
     return view('vue');
 });
-// API маршруты
-Route::prefix('api')->group(function() {
-    // Получить все маршруты
+
+Route::prefix('api')->group(function () {
+
     Route::get('/routes', [RouteController::class, 'getRoutes']);
-    
-    // Получить конкретный маршрут
+
     Route::get('/routes/{id}', [RouteController::class, 'getRoute']);
-    
-    // Добавить точку к маршруту
+
+    Route::post('/routes/filter', [FilterController::class, 'index'])->name('routes.filter');
+   
+
+
     Route::post('/routes/{slug}/points', [RouteController::class, 'addPoint']);
 });
 
-// Все остальные запросы - на Vue приложение
+    Route::post('/routes/filter', [FilterController::class, 'index'])->name('routes.filter');

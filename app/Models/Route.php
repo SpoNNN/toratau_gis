@@ -7,15 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class Route extends Model
 {
     protected $table = 'route';
-    
+
     protected $fillable = [
-        
-        'title', 
+
+        'title',
         'map_color',
         'description',
-       
-        'points'
-      
+        'points',
+        'duration',
+        'distance',
+        'participants',
+        'audience'
+
     ];
 
     public function point()

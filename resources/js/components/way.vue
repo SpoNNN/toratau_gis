@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
@@ -29,7 +29,6 @@ interface Filters {
   maxDuration: number
 }
 
-// Firebase config
 const firebaseConfig = {
   apiKey: 'AIzaSyDnXXJ1R-lkoheA8LEJuHLzy2kjUvcC4-w',
   authDomain: 'myproject-35bc3.firebaseapp.com',
@@ -39,20 +38,18 @@ const firebaseConfig = {
   appId: '1:1064017138140:web:b294ccd4f2b9c9762abf19'
 }
 
-// Firebase init
 const app = initializeApp(firebaseConfig)
 const db = getFirestore(app)
 const auth = getAuth(app)
 
-// Component state
 const routes = ref<Route[]>([])
 const searchQuery = ref('')
 const showFilterPopup = ref(false)
 const favoritesLoaded = ref(false)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+const selectedRouteId = ref<number | null>(null)
 
-// Filters
 const filters = ref({
   minDistance: null as number | null,
   maxParticipants: null as number | null,
@@ -61,17 +58,14 @@ const filters = ref({
   maxDuration: 300
 })
 
-// Load routes from database
 const loadRoutes = async () => {
   try {
     isLoading.value = true
     error.value = null
     
-    // Load from Laravel API
     const response = await axios.get('/api/routes')
     const dbRoutes = response.data.data || []
     
-    // Transform to our format
     routes.value = dbRoutes.map((dbRoute: any) => ({
       id: dbRoute.id,
       title: dbRoute.title,
@@ -80,10 +74,10 @@ const loadRoutes = async () => {
       participants: dbRoute.participants || null,
       audience: dbRoute.audience || null,
       duration: dbRoute.duration || 0,
+      description: dbRoute.description || '',
       isFavorite: false
     }))
     
-    // Load favorites after routes are loaded
     await loadFavorites()
     
   } catch (err) {
@@ -95,7 +89,6 @@ const loadRoutes = async () => {
   }
 }
 
-// Load favorites from Firebase or localStorage
 const loadFavorites = async () => {
   try {
     const user = auth.currentUser
@@ -110,7 +103,6 @@ const loadFavorites = async () => {
       favorites = JSON.parse(localStorage.getItem('favorites') || '[]')
     }
     
-    // Update isFavorite flag
     routes.value.forEach(route => {
       route.isFavorite = favorites.some((fav: any) => fav.id === route.id)
     })
@@ -120,7 +112,6 @@ const loadFavorites = async () => {
   }
 }
 
-// Toggle favorite status
 const toggleFavorite = async (route: Route) => {
   try {
     route.isFavorite = !route.isFavorite
@@ -157,18 +148,15 @@ const toggleFavorite = async (route: Route) => {
     }
   } catch (err) {
     console.error('Failed to toggle favorite:', err)
-    route.isFavorite = !route.isFavorite // Revert on error
+    route.isFavorite = !route.isFavorite
   }
 }
 
-// Apply filters
-const applyFilters = (newFilters: Filters) => {
-  filters.value = { ...newFilters }
-  localStorage.setItem('filters', JSON.stringify(filters.value))
+const applyFilters = (filteredRoutes: Route[]) => {
+  routes.value = filteredRoutes
   showFilterPopup.value = false
 }
 
-// Reset filters
 const resetFilters = () => {
   searchQuery.value = ''
   filters.value = {
@@ -179,9 +167,9 @@ const resetFilters = () => {
     maxDuration: 300
   }
   localStorage.removeItem('filters')
+  loadRoutes()
 }
 
-// Filtered routes
 const filteredRoutes = computed(() => {
   return routes.value.filter(route => {
     const matchesSearch = route.title.toLowerCase()
@@ -205,18 +193,14 @@ const filteredRoutes = computed(() => {
   })
 })
 
-// Load data on mount
 onMounted(() => {
-  // Load saved filters
   const savedFilters = JSON.parse(localStorage.getItem('filters') || '{}')
   if (savedFilters) {
     filters.value = { ...filters.value, ...savedFilters }
   }
   
-  // Load routes
   loadRoutes()
   
-  // Watch auth changes
   onAuthStateChanged(auth, () => {
     loadFavorites()
   })
@@ -226,9 +210,10 @@ defineEmits(['selectRoute'])
 </script>
 
 <template>
- <div class="text-center mb-6"> <span class="text-white text-3xl text-center">Научно-образовательные маршруты по Уфе</span></div>
+  <div class="text-center mb-6">
+    <span class="text-white text-3xl text-center">Научно-образовательные маршруты по Уфе</span>
+  </div>
 
-  <!-- Поле поиска -->
   <SearchInput
     v-model="searchQuery"
     placeholderText="найти маршрут"
@@ -237,16 +222,13 @@ defineEmits(['selectRoute'])
     @click-filter="showFilterPopup = true"
   />
 
-  <!-- Loading state -->
   <div v-if="isLoading" class="text-white text-center">Загрузка маршрутов...</div>
 
-  <!-- Error state -->
   <div v-else-if="error" class="text-red-500 text-center">
     {{ error }}
     <button @click="loadRoutes" class="text-white">Повторить</button>
   </div>
 
-  <!-- Фильтрованный список маршрутов -->
   <div v-else-if="favoritesLoaded" class="space-y-3 mt-4" style="width: 420px">
     <buttons
       v-for="route in filteredRoutes"
@@ -257,35 +239,25 @@ defineEmits(['selectRoute'])
       @toggle-favorite="toggleFavorite(route)"
       @click="
         () => {
-          
           if (route.id) {
-            
+            selectedRouteId = route.id
             $emit('selectRoute', route.id)
             axios.get('/api/routes/' + route.id)
           }
         }
       "
     />
-       <RoutePage :route-id="selectedRouteId" />
   </div>
 
- <div class="mt-4 flex justify-center">
-  <button @click="resetFilters" class="bg-red-500 text-white px-4 py-2 mt-4 rounded">
-    <div class="text-white">Сбросить фильтры</div>
-  </button>
-</div>
+  <div class="mt-4 flex justify-center">
+    <button @click="resetFilters" class="bg-red-500 text-white px-4 py-2 mt-4 rounded">
+      <div class="text-white">Сбросить фильтры</div>
+    </button>
+  </div>
 
   <filterPop
     v-if="showFilterPopup"
-    :min-distance="filters.minDistance"
-    :max-participants="filters.maxParticipants"
-    :selected-audience="filters.selectedAudience"
-    :min-duration="filters.minDuration"
-    :max-duration="filters.maxDuration"
-    @apply="applyFilters"
+    @filtered="applyFilters"
     @close="showFilterPopup = false"
   />
 </template>
-<script setup lang="ts">
-
-</script>

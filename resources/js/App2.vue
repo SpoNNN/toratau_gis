@@ -64,7 +64,7 @@ const firebaseConfig = {
 }
 
 // App state
-const API_BASE_URL = '/api' // Базовый URL для API
+const API_BASE_URL = '/api'
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 const routesData = ref<RoutesData>({})
@@ -77,6 +77,7 @@ const currentPointData = ref<Point | null>(null)
 const isPathObjectOpened = ref<boolean>(false)
 const genericPopupRef = ref<any>(null)
 const wayRef = ref<any>(null)
+const selectedRouteId = ref<number | null>(null)
 
 // Methods
 const fetchRoutes = async () => {
@@ -88,7 +89,7 @@ const fetchRoutes = async () => {
     response.data.data.forEach((route: any) => {
       const routeKey = `route${route.slug}`
       
-      // Обработка infoItems
+ 
       const infoItems = Array.isArray(route.route_infos) 
         ? route.route_infos.reduce((acc: any, info: any) => {
             acc[info.key] = {
@@ -101,7 +102,7 @@ const fetchRoutes = async () => {
           }, {}) 
         : {}
 
-      // Обработка points - убеждаемся, что это массив
+      // Обработка points
       let points: Point[] = []
       if (Array.isArray(route.points)) {
         points = route.points.map((point: any) => ({
@@ -111,12 +112,11 @@ const fetchRoutes = async () => {
           name: point.name,
           address: point.address,
           url: point.url,
-          pointName: point.point_name || '', // Добавляем fallback значение
-          description: point.description || '', // Добавляем fallback значение
+          pointName: point.point_name || '',
+          description: point.description || '',
           images: point.images ? (typeof point.images === 'string' ? JSON.parse(point.images) : point.images) : []
         }))
       } else if (route.points && typeof route.points === 'object') {
-        // Если points - объект, преобразуем его в массив
         points = [{
           id: route.points.id,
           lon: parseFloat(route.points.lon),
@@ -150,9 +150,19 @@ const fetchRoutes = async () => {
     isLoading.value = false
   }
 }
-const handleSelectRoute = (route: string) => {
-  currentRoute.value = route
-  currentPage.value = route === 'routeAll' ? 'way' : 'RouteDetails.vue'
+
+const handleSelectRoute = (routeId: number) => {
+  console.log('=== handleSelectRoute вызван ===')
+  console.log('Получен routeId:', routeId, 'тип:', typeof routeId)
+  selectedRouteId.value = routeId
+  console.log('selectedRouteId.value установлен:', selectedRouteId.value)
+  currentPage.value = 'RouteDetails.vue'
+  console.log('currentPage установлен:', currentPage.value)
+}
+
+const handleCreateObject = (object: any) => {
+  console.log('Создан объект:', object)
+  
 }
 
 const updateClick = (data: Point, route: Route) => {
@@ -247,17 +257,17 @@ onMounted(() => {
         @selectRoute="handleSelectRoute"
       />
 
-      <RouteDetails
-        v-if="currentPage === 'RouteDetails.vue'"
-        :route="currentRouteData"
+   
+
+      <RouteDetails 
+        v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
+        :route-id="selectedRouteId"  
         @select-object="(point: Point) => updateClick(point, currentRouteData)"
-        @navigate="
-          (point: Point) => {
-            isPathObjectOpened = true
-            currentPointData = point
-            currentPage = 'Details Opened'
-          }
-        "
+        @navigate="(point: Point) => {
+          isPathObjectOpened = true
+          currentPointData = point
+          currentPage = 'Details Opened'
+        }"
         @create-object="handleCreateObject"
       />
 
@@ -305,12 +315,12 @@ onMounted(() => {
 <style scoped>
 .app-container {
   display: flex;
-  min-height: calc(100vh - 60px); /* Учитываем высоту header */
+  min-height: calc(100vh - 60px);
 }
 
 .sidebar {
   width: 500px;
-  background-color: #3730a3; /* indigo-800 */
+  background-color: #3730a3;
   padding: 20px;
   overflow-y: auto;
 }

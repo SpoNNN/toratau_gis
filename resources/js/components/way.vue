@@ -241,8 +241,9 @@ defineEmits(['selectRoute'])
         () => {
           if (route.id) {
             selectedRouteId = route.id
-            $emit('selectRoute', route.id)
+       $emit('selectRoute', Number(route.id))
             axios.get('/api/routes/' + route.id)
+            console.log('Мы перешли в роут с айди', route.id)
           }
         }
       "

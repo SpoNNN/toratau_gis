@@ -7,15 +7,17 @@ use App\Models\Point;
 use App\Models\RouteInfo;
 use Illuminate\Http\Request;
 
+
+// Необходимо рефакторить, временное решение переноса
 class RouteController extends Controller
 {
     public function getRoutes()
     {
         $routes = Route::with(['point', 'RouteInfos'])->get();
-        
+
         return response()->json([
             'success' => true,
-            'data' => $routes->map(function($route) {
+            'data' => $routes->map(function ($route) {
                 return $this->transformRoute($route);
             })
         ]);
@@ -23,37 +25,18 @@ class RouteController extends Controller
 
     public function getRoute($id)
     {
- 
-    $route = Route::with('routeInfos') // Use the correct relationship name
-                ->findOrFail($id); // Use findOrFail for single ID lookup
-    
-                    
+
+        $route = Route::with('routeInfos')
+            ->findOrFail($id);
+
+
         return response()->json([
             'success' => true,
             'data' => $this->transformRoute($route)
         ]);
     }
 
-    public function addPoint(Request $request, $slug)
-    {
-        $request->validate([
-            'name' => 'required',
-            'address' => 'required',
-            'lon' => 'required|numeric',
-            'lat' => 'required|numeric',
-            // другие поля
-        ]);
-        
-        $route = Route::where('slug', $slug)->firstOrFail();
-        
-        $point = new Point($request->all());
-        $route->points()->save($point);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $point
-        ]);
-    }
+
 
     private function transformRoute(Route $route)
     {
@@ -62,18 +45,21 @@ class RouteController extends Controller
             'title' => $route->title,
             'map_color' => $route->map_color,
             'description' => $route->description,
+            'duration' => $route->duration,
+            'audience' => $route->audience,
             'slug' => $route->slug,
-            'info_items' => $route->routeInfos ? $route->routeInfos->mapWithKeys(function($info) {
-                return [$info->key => [
-                    'label' => $info->label,
-                    'value' => $info->value
-                ]];
-            }) : [],
-            'point' => $route->point ? $route->point->map(function($point) {
+            'info_items' => $route->routeInfos ? $route->routeInfos->mapWithKeys(function ($info) {
                 return [
-                    'lon' => (float)$point->lon,
-                   
-                    'lat' => (float)$point->lat,
+                    $info->key => [
+                        'label' => $info->label,
+                        'value' => $info->value
+                    ]
+                ];
+            }) : [],
+            'point' => $route->point ? $route->point->map(function ($point) {
+                return [
+                    'lon' => (float) $point->lon,
+                    'lat' => (float) $point->lat,
                     'name' => $point->name,
                     'address' => $point->address,
                     'url' => $point->url,

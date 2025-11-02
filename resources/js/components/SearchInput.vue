@@ -69,6 +69,7 @@ function handleInput(event: Event) {
       type="text"
       :placeholder="placeholderText"
       class="w-full p-3 rounded-lg bg-indigo-900 text-white placeholder-gray-400"
+      style="color: white;"
     />
 
     <button

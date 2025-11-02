@@ -169,7 +169,7 @@ const handleBeforeUpload = (file: File) => {
   }
 
 
-  const isLt5M = file.size / 1024 / 1024 < 1
+  const isLt5M = file.size / 1024 / 1024 < 10
   if (!isLt5M) {
     alert('Изображение должно быть меньше 5MB!')
     return false
@@ -288,18 +288,17 @@ const onFinishFailed = (errorInfo: any) => {
         <div class="mt-5">
           <!-- Вкладка "О маршруте" -->
           <div v-if="activeTab === 'about'">
-            <h2 class="text-white" style="margin: 10px">Описание маршрута</h2>
+        
             <p class="text-white" style="margin: 10px">{{ route.description }}</p>
             
-            <h2 class="text-white" style="margin: 10px">Информация о маршруте:</h2>
             <div class="info-block">
               <dl class="text-white">
 
                 
                 <template v-if="route.info_items && Object.keys(route.info_items).length > 0">
                   <template v-for="(infoItem, key) in route.info_items" :key="key">
-                    <dt><strong>{{ infoItem.label }}:</strong></dt>
-                    <dd>{{ infoItem.value }}</dd>
+                    <dt><strong>Целевая аудитория:</strong> {{ infoItem.value }} лет</dt>
+                <dt><strong>Программа обслуживания и посещения:</strong> {{ }} лет</dt>
                   </template>
                 </template>
               </dl>

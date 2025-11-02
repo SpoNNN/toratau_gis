@@ -9,45 +9,36 @@
     <h2 class="text-center text-white text-2xl font-bold mb-4">{{ pointData.name }}</h2>
 
     <div class="relative py-1">
-      <a-image
-        v-if="pointData.images && pointData.images.length > 0"
-        :src="pointData.images[0]"
-        alt="Preview"
-        class="point-image main-image"
-        @click="visible = true"
-        :preview="{ visible: false }"
-      />
+      <a-image v-if="pointData.images && pointData.images.length > 0" :src="pointData.images[0]" alt="Preview"
+        class="point-image main-image" @click="visible = true" :preview="{ visible: false }" />
     </div>
 
     <div class="border-b-2 border-gray-300 w-full my-4"></div>
 
-    <div
-      class="h-50 rounded-xl px-4 py-4 text-white text-sm"
-      style="
-        background-color: rgb(64, 84, 148);
-        min-width: 350px !important;
-        max-width: 470px !important;
-      "
-    >
-      <p>
+    <div class="rounded-xl px-4 py-4 text-white text-sm" style="
+    background-color: rgb(64, 84, 148);
+    min-width: 350px !important;
+    max-width: 470px !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  ">
+      <p style="word-wrap: break-word; overflow-wrap: break-word;">
         {{ pointData.description }}
       </p>
-
-      <span> {{ pointData.address }}</span>
-
+      <span style="word-wrap: break-word; overflow-wrap: break-word;">
+        Адрес: {{ pointData.address }}
+      </span>
       <div v-if="pointData.url" style="text-align: left; margin-top: 10px">
-        <a :href="pointData.url" target="_blank">Перейти на сайт</a>
+      <div style="display: flex;" class="content_site___info">
+          <p class="mr-1">Ссылка на сайт: </p>
+        <a :href="pointData.url" target="_blank">{{ pointData.url }}</a>
+      </div>
       </div>
     </div>
 
     <div style="display: none">
       <a-image-preview-group :preview="{ visible, onVisibleChange: (vis) => (visible = vis) }">
-        <a-image
-          v-for="(image, index) in pointData.images"
-          :key="index"
-          :src="image"
-          :alt="pointData.name"
-        />
+        <a-image v-for="(image, index) in pointData.images" :key="index" :src="image" :alt="pointData.name" />
       </a-image-preview-group>
     </div>
   </div>
@@ -116,6 +107,7 @@ const visible = ref(false)
 .website {
   margin-bottom: 20px;
 }
+
 .website a {
   color: #4caf50;
   text-decoration: none;

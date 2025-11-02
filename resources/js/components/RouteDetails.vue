@@ -30,6 +30,10 @@ interface Route {
   title: string
   description: string
   map_color: string | null
+  audience: string
+  distance: string
+  participants: string
+  duration: number
   slug: string
   info_items: Record<string, InfoItem>
   point: RoutePoint[]
@@ -40,7 +44,7 @@ const route = ref<Route | null>(null)
 
 const props = defineProps<{
   routeId?: number
-  route?: Route 
+  route?: Route
 }>()
 
 const emit = defineEmits(['select-object', 'navigate', 'create-object'])
@@ -53,18 +57,18 @@ const actualRouteId = computed(() => {
   if (props.routeId) {
     return props.routeId
   }
-  
+
 
   if (props.route && props.route.id) {
     return props.route.id
   }
-  
+
 
   const idFromUrl = vueRoute.params.id || vueRoute.params.routeId
   if (idFromUrl) {
     return Number(idFromUrl)
   }
-  
+
 
   return 1
 })
@@ -75,7 +79,7 @@ const loadRoute = async (id: number) => {
   try {
     isLoading.value = true
     error.value = null
-    
+
     const response = await axios.get(`/api/routes/${id}`)
     if (response.data && response.data.success && response.data.data) {
       route.value = response.data.data
@@ -83,7 +87,7 @@ const loadRoute = async (id: number) => {
       route.value = response.data
     }
 
-    
+
   } catch (err) {
 
     error.value = 'Не удалось загрузить маршрут: ' + (err as any).message
@@ -95,7 +99,17 @@ const loadRoute = async (id: number) => {
   }
 }
 
+const formattedDuration = computed(() => {
+  if (!route.value?.duration) return '0 мин'
 
+  const hours = Math.floor(route.value.duration / 60)
+  const minutes = route.value.duration % 60
+
+  if (hours === 0) return `${minutes} мин`
+  if (minutes === 0) return `${hours} ч`
+
+  return `${hours} ч ${minutes} мин`
+})
 watch(actualRouteId, (newId) => {
   if (newId) {
     loadRoute(newId)
@@ -182,7 +196,7 @@ const handleBeforeUpload = (file: File) => {
   }
   reader.readAsDataURL(file)
 
-  return false 
+  return false
 }
 
 const handleRemoveImage = (file: any) => {
@@ -196,14 +210,14 @@ const handleRemoveImage = (file: any) => {
 const onFinish = async () => {
   try {
     isSubmitting.value = true
-    
-    
-const routeId = actualRouteId.value
-    
+
+
+    const routeId = actualRouteId.value
+
     if (!routeId) {
       throw new Error('ID маршрута не найден')
     }
-    
+
     const response = await axios.post(`/api/routes/${routeId}/points`, {
       name: formState.value.name,
       description: formState.value.description,
@@ -214,12 +228,12 @@ const routeId = actualRouteId.value
       lat: formState.value.lat,
       images: JSON.stringify(formState.value.images)
     })
-    
+
     await loadRoute(actualRouteId.value)
-    
+
 
     emit('create-object', response.data.data)
-    
+
 
     open.value = false
     formState.value = {
@@ -245,60 +259,66 @@ const routeId = actualRouteId.value
 const onFinishFailed = (errorInfo: any) => {
   console.log('Ошибка формы:', errorInfo)
 }
+
 </script>
 
 <template>
   <div class="container">
     <div v-if="isLoading" class="loading">Загрузка маршрута...</div>
-    
+
     <div v-else-if="error" class="error">{{ error }}</div>
-    
+
     <div v-else-if="route" class="route-content">
       <h1 class="text-white text-3xl text-center mb-4">{{ route.title }}</h1>
-      
+
       <div style="margin: 10px">
-        <SearchInput
-          v-model="searchQuery"
-          :points="route.point || []"
-          placeholderText="найти объект"
-          @focus="isSearching = true"
-          @blur="handleSearchBlur"
-          @select-point="openPoint"
-        />
+        <SearchInput v-model="searchQuery" :points="route.point || []" placeholderText="найти объект"
+          @focus="isSearching = true" @blur="handleSearchBlur" @select-point="openPoint" />
       </div>
 
       <div v-if="!shouldHideContent" class="w-full">
         <div class="flex justify-between border-b border-gray-300 px-10">
-          <button
-            class="p-2 focus:outline-none"
+          <button class="p-2 focus:outline-none"
             :class="activeTab === 'about' ? 'border-b-2 border-blue-500 text-blue-500 font-semibold' : 'text-white'"
-            @click="activeTab = 'about'"
-          >
+            @click="activeTab = 'about'">
             <div class="text-white">о маршруте</div>
           </button>
-          <button
-            class="p-2 focus:outline-none"
+          <button class="p-2 focus:outline-none"
             :class="activeTab === 'objects' ? 'border-b-2 border-blue-500 text-blue-500 font-semibold' : 'text-white'"
-            @click="activeTab = 'objects'"
-          >
+            @click="activeTab = 'objects'">
             <div class="text-white">объекты маршрута</div>
           </button>
         </div>
 
         <div class="mt-5">
+
           <!-- Вкладка "О маршруте" -->
           <div v-if="activeTab === 'about'">
-        
+
             <p class="text-white" style="margin: 10px">{{ route.description }}</p>
-            
+
             <div class="info-block">
               <dl class="text-white">
 
-                
+
                 <template v-if="route.info_items && Object.keys(route.info_items).length > 0">
                   <template v-for="(infoItem, key) in route.info_items" :key="key">
-                    <dt><strong>Целевая аудитория:</strong> {{ infoItem.value }} лет</dt>
-                <dt><strong>Программа обслуживания и посещения:</strong> {{ }} лет</dt>
+                    <dt style="display: flex; align-items: center; gap: 8px;"><img
+                        :src="0 ? 'Аудитория.svg' : 'Аудитория.svg'" /><strong>Целевая аудитория:</strong> {{
+                          route.audience }} лет</dt>
+                    <dt style="display: flex;  gap: 8px;"><img
+                        :src="0 ? 'Программа обслуживания и посещения.svg' : 'Программа обслуживания и посещения.svg'" /><strong>Программа
+                        обслуживания и посещения:</strong> </dt>
+                    <dd style="gap: 8px;">{{ infoItem.value }}</dd>
+                    <dt style="display: flex; align-items: center; gap: 8px;"><img
+                        :src="0 ? 'Продолжительность.svg' : 'Продолжительность.svg'" /><strong>Продолжительность:</strong>
+                      {{ formattedDuration }}</dt>
+                    <dt style="display: flex; align-items: center; gap: 8px;"><img
+                        :src="0 ? 'Протяженность.svg' : 'Протяженность.svg'" /><strong>Протяженность:</strong> {{
+                      route.distance }} км</dt>
+                    <dt style="display: flex; align-items: center; gap: 8px;"><img
+                        :src="0 ? 'Кол-во участников.svg' : 'Кол-во участников.svg'" /><strong>Кол-во
+                        участников:</strong> до {{ route.participants }} чел</dt>
                   </template>
                 </template>
               </dl>
@@ -308,56 +328,41 @@ const onFinishFailed = (errorInfo: any) => {
           <!-- Вкладка "Объекты маршрута" -->
           <div v-if="activeTab === 'objects'" class="objects-tab">
             <h2 class="text-white mb-4">Точки маршрута</h2>
-            
+
             <div v-if="route.point && route.point.length > 0" class="timeline-container">
               <div class="timeline-item" v-for="(point, index) in route.point" :key="index">
                 <div class="timeline-number">{{ index + 1 }}</div>
-                
-                <div class="timeline-text">
+
+                <div class="timeline-text" >
                   <h3>{{ point.name }}</h3>
-                  <p>{{ point.description }}</p>
-                  <p class="coordinates">lon={{ point.lon }}, lat={{ point.lat }}</p>
+                  <p style="margin-top: 25px;">{{ point.description }}</p>
+                  <p class="coordinates">lon= {{ point.lon }}, lat= {{ point.lat }}</p>
                   <p>Адрес: {{ point.address }}</p>
-                  
+
                   <!-- Отображение изображений -->
                   <div v-if="point.images && point.images.length > 0" class="point-images">
                     <div class="images-grid">
-                      <img 
-                        v-for="(image, imgIndex) in point.images.slice(0, 3)" 
-                        :key="imgIndex"
-                        :src="image" 
-                        :alt="`${point.name} - изображение ${imgIndex + 1}`"
-                        class="point-image"
-                        @click="() => openImageModal(point.images, imgIndex)"
-                      />
-                      <div 
-                        v-if="point.images.length > 3" 
-                        class="more-images"
-                        @click="() => openImageModal(point.images, 3)"
-                      >
+                      <img v-for="(image, imgIndex) in point.images.slice(0, 3)" :key="imgIndex" :src="image"
+                        :alt="`${point.name} - изображение ${imgIndex + 1}`" class="point-image"
+                        @click="() => openImageModal(point.images, imgIndex)" />
+                      <div v-if="point.images.length > 3" class="more-images"
+                        @click="() => openImageModal(point.images, 3)">
                         +{{ point.images.length - 3 }}
                       </div>
                     </div>
                   </div>
                 </div>
-                
-                <div 
-                  @click="navigateToPage(point)" 
-                  class="info-icon"
-                  title="Подробнее"
-                >
+
+                <div @click="navigateToPage(point)" class="info-icon" title="Подробнее">
                   <InfoCircleOutlined />
                 </div>
-                
-                <div
-                  class="map-button"
-                  @click="openPoint(point)"
-                >
+
+                <div class="map-button" @click="openPoint(point)">
                   На карте
                 </div>
               </div>
             </div>
-            
+
             <div v-else class="text-white text-center py-4">
               Нет точек маршрута
             </div>
@@ -367,104 +372,50 @@ const onFinishFailed = (errorInfo: any) => {
             </a-button>
 
             <!-- Модальное окно добавления объекта -->
-            <a-modal 
-              v-model:open="open" 
-              title="Добавить точку маршрута" 
-              :footer="null"
-              width="600px"
-            >
-              <a-form 
-                :model="formState" 
-                layout="vertical"
-                @finish="onFinish" 
-                @finishFailed="onFinishFailed"
-              >
-                <a-form-item 
-                  name="name" 
-                  label="Название точки"
-                  :rules="[{ required: true, message: 'Введите название' }]"
-                >
-                  <a-input 
-                    v-model:value="formState.name" 
-                    placeholder="Например: БГПУ им. М. Акмуллы" 
-                  />
+            <a-modal v-model:open="open" title="Добавить точку маршрута" :footer="null" width="600px">
+              <a-form :model="formState" layout="vertical" @finish="onFinish" @finishFailed="onFinishFailed">
+                <a-form-item name="name" label="Название точки"
+                  :rules="[{ required: true, message: 'Введите название' }]">
+                  <a-input v-model:value="formState.name" placeholder="Например: БГПУ им. М. Акмуллы" />
                 </a-form-item>
-                
+
                 <a-form-item name="description" label="Описание">
-                  <a-textarea 
-                    v-model:value="formState.description" 
-                    placeholder="Подробное описание точки маршрута"
-                    :rows="4"
-                  />
+                  <a-textarea v-model:value="formState.description" placeholder="Подробное описание точки маршрута"
+                    :rows="4" />
                 </a-form-item>
-                
-                <a-form-item 
-                  name="address" 
-                  label="Адрес"
-                  :rules="[{ required: true, message: 'Введите адрес' }]"
-                >
-                  <a-input 
-                    v-model:value="formState.address" 
-                    placeholder="Например: ул. Октябрьской Революции, 3а" 
-                  />
+
+                <a-form-item name="address" label="Адрес" :rules="[{ required: true, message: 'Введите адрес' }]">
+                  <a-input v-model:value="formState.address" placeholder="Например: ул. Октябрьской Революции, 3а" />
                 </a-form-item>
 
                 <a-row :gutter="16">
                   <a-col :span="12">
-                    <a-form-item 
-                      name="lon" 
-                      label="Долгота (Longitude)"
-                      :rules="[{ required: true, message: 'Введите долготу' }]"
-                    >
-                      <a-input-number 
-                        v-model:value="formState.lon" 
-                        placeholder="54.123456" 
-                        :step="0.000001" 
-                        :precision="6"
-                        style="width: 100%"
-                      />
+                    <a-form-item name="lon" label="Долгота (Longitude)"
+                      :rules="[{ required: true, message: 'Введите долготу' }]">
+                      <a-input-number v-model:value="formState.lon" placeholder="54.123456" :step="0.000001"
+                        :precision="6" style="width: 100%" />
                     </a-form-item>
                   </a-col>
                   <a-col :span="12">
-                    <a-form-item 
-                      name="lat" 
-                      label="Широта (Latitude)"
-                      :rules="[{ required: true, message: 'Введите широту' }]"
-                    >
-                      <a-input-number 
-                        v-model:value="formState.lat" 
-                        placeholder="55.123456" 
-                        :step="0.000001" 
-                        :precision="6"
-                        style="width: 100%"
-                      />
+                    <a-form-item name="lat" label="Широта (Latitude)"
+                      :rules="[{ required: true, message: 'Введите широту' }]">
+                      <a-input-number v-model:value="formState.lat" placeholder="55.123456" :step="0.000001"
+                        :precision="6" style="width: 100%" />
                     </a-form-item>
                   </a-col>
                 </a-row>
-                
+
                 <a-form-item name="url" label="Ссылка (необязательно)">
-                  <a-input 
-                    v-model:value="formState.url" 
-                    placeholder="https://example.com" 
-                  />
+                  <a-input v-model:value="formState.url" placeholder="https://example.com" />
                 </a-form-item>
-                
+
                 <a-form-item name="point_name" label="Идентификатор точки (необязательно)">
-                  <a-input 
-                    v-model:value="formState.point_name" 
-                    placeholder="bspu_point_1" 
-                  />
+                  <a-input v-model:value="formState.point_name" placeholder="bspu_point_1" />
                 </a-form-item>
 
                 <a-form-item name="images" label="Изображения (необязательно)">
-                  <a-upload
-                    v-model:file-list="fileList"
-                    list-type="picture-card"
-                    :before-upload="handleBeforeUpload"
-                    @remove="handleRemoveImage"
-                    accept="image/*"
-                    :multiple="true"
-                  >
+                  <a-upload v-model:file-list="fileList" list-type="picture-card" :before-upload="handleBeforeUpload"
+                    @remove="handleRemoveImage" accept="image/*" :multiple="true">
                     <div v-if="fileList.length < 8">
                       <plus-outlined />
                       <div style="margin-top: 8px">Загрузить</div>
@@ -489,33 +440,20 @@ const onFinishFailed = (errorInfo: any) => {
             </a-modal>
 
             <!-- Модалка для просмотра изображений -->
-            <a-modal
-              v-model:open="imageModalVisible"
-              :footer="null"
-              width="80%"
-              style="max-width: 1000px;"
-            >
+            <a-modal v-model:open="imageModalVisible" :footer="null" width="80%" style="max-width: 1000px;">
               <div class="image-viewer">
-                <img 
-                  v-if="currentImages[currentImageIndex]"
-                  :src="currentImages[currentImageIndex]" 
-                  alt="Изображение точки"
-                  class="modal-image"
-                />
+                <img v-if="currentImages[currentImageIndex]" :src="currentImages[currentImageIndex]"
+                  alt="Изображение точки" class="modal-image" />
                 <div v-if="currentImages.length > 1" class="image-navigation">
-                  <a-button 
-                    @click="currentImageIndex = Math.max(0, currentImageIndex - 1)"
-                    :disabled="currentImageIndex === 0"
-                  >
+                  <a-button @click="currentImageIndex = Math.max(0, currentImageIndex - 1)"
+                    :disabled="currentImageIndex === 0">
                     ← Предыдущее
                   </a-button>
                   <span class="image-counter">
                     {{ currentImageIndex + 1 }} / {{ currentImages.length }}
                   </span>
-                  <a-button 
-                    @click="currentImageIndex = Math.min(currentImages.length - 1, currentImageIndex + 1)"
-                    :disabled="currentImageIndex === currentImages.length - 1"
-                  >
+                  <a-button @click="currentImageIndex = Math.min(currentImages.length - 1, currentImageIndex + 1)"
+                    :disabled="currentImageIndex === currentImages.length - 1">
                     Следующее →
                   </a-button>
                 </div>
@@ -525,7 +463,7 @@ const onFinishFailed = (errorInfo: any) => {
         </div>
       </div>
     </div>
-    
+
     <div v-else class="text-white text-center py-8">
       Маршрут не найден
     </div>
@@ -541,7 +479,7 @@ const onFinishFailed = (errorInfo: any) => {
   width: 100%;
 }
 
-.loading, 
+.loading,
 .error {
   color: white;
   text-align: center;

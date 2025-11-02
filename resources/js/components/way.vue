@@ -13,10 +13,10 @@ interface Route {
   id: number
   title: string
   slug: string | null
-  distance: number | null
+  distance: string | null
   participants: number | null
   audience: string | null
-  duration: number,
+  duration: string,
   description: String,
   isFavorite: boolean
 }

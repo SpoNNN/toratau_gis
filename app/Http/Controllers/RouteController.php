@@ -45,8 +45,10 @@ class RouteController extends Controller
             'title' => $route->title,
             'map_color' => $route->map_color,
             'description' => $route->description,
+            'distance' => $route->distance,
             'duration' => $route->duration,
             'audience' => $route->audience,
+            'participants' => $route->participants,
             'slug' => $route->slug,
             'info_items' => $route->routeInfos ? $route->routeInfos->mapWithKeys(function ($info) {
                 return [

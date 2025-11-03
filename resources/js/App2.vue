@@ -4,7 +4,7 @@ import axios from 'axios'
 import { initializeApp } from '@firebase/app'
 import { getAuth, onAuthStateChanged, signOut } from '@firebase/auth'
 
-// Components
+
 import Header2 from './components/Header2.vue'
 import selectedObject from './components/selectedObject.vue'
 import way from './components/way.vue'
@@ -15,7 +15,7 @@ import RouteDetails from './components/RouteDetails.vue'
 import favoritesPage from './components/favoritesPage.vue'
 import GenericPopup from './components/Socrat/GenericPopup.vue'
 
-// Types
+
 interface Point {
   id: number
   lon: number
@@ -89,7 +89,7 @@ const fetchRoutes = async () => {
     response.data.data.forEach((route: any) => {
       const routeKey = `route${route.slug}`
       
- 
+
       const infoItems = Array.isArray(route.route_infos) 
         ? route.route_infos.reduce((acc: any, info: any) => {
             acc[info.key] = {
@@ -102,7 +102,7 @@ const fetchRoutes = async () => {
           }, {}) 
         : {}
 
-      // Обработка points
+ 
       let points: Point[] = []
       if (Array.isArray(route.points)) {
         points = route.points.map((point: any) => ({
@@ -154,15 +154,24 @@ const fetchRoutes = async () => {
 const handleSelectRoute = (routeId: number) => {
   console.log('=== handleSelectRoute вызван ===')
   console.log('Получен routeId:', routeId, 'тип:', typeof routeId)
+  
   selectedRouteId.value = routeId
   console.log('selectedRouteId.value установлен:', selectedRouteId.value)
+  
+
+  const selectedRoute = Object.values(routesData.value).find(r => r.id === routeId)
+  if (selectedRoute) {
+    currentRoute.value = `route${selectedRoute.slug}`
+    console.log('currentRoute установлен:', currentRoute.value)
+  }
+  
   currentPage.value = 'RouteDetails.vue'
   console.log('currentPage установлен:', currentPage.value)
 }
 
 const handleCreateObject = (object: any) => {
   console.log('Создан объект:', object)
-  
+ 
 }
 
 const updateClick = (data: Point, route: Route) => {
@@ -179,6 +188,7 @@ const updateClick = (data: Point, route: Route) => {
 const handleNavigate = (page: string) => {
   if (page === 'way') {
     currentRoute.value = 'routeAll'
+    selectedRouteId.value = null
   }
   currentPage.value = page
 }
@@ -194,7 +204,7 @@ const handleSignOut = () => {
   })
 }
 
-// Computed
+
 const currentRouteData = computed<Route>(() => {
   if (currentRoute.value in routesData.value) {
     return routesData.value[currentRoute.value]
@@ -211,7 +221,27 @@ const currentRouteData = computed<Route>(() => {
   }
 })
 
-// Lifecycle hooks
+
+const currentRouteSlug = computed<string | null>(() => {
+  if (currentRoute.value === 'routeAll') {
+    return null 
+  }
+  
+
+  const slug = currentRoute.value.replace('route', '').toLowerCase()
+  return slug || null
+})
+
+
+const currentRoutePoints = computed(() => {
+  if (currentRoute.value === 'routeAll') {
+    return []
+  }
+  
+  return currentRouteData.value?.points || []
+})
+
+
 onMounted(() => {
   fetchRoutes()
   
@@ -257,7 +287,6 @@ onMounted(() => {
         @selectRoute="handleSelectRoute"
       />
 
-   
 
       <RouteDetails 
         v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
@@ -269,6 +298,11 @@ onMounted(() => {
           currentPage = 'Details Opened'
         }"
         @create-object="handleCreateObject"
+        @back="() => {
+          currentPage = 'way'
+          currentRoute = 'routeAll'
+          selectedRouteId = null
+        }"
       />
 
       <register v-if="currentPage === 'register'" />
@@ -289,16 +323,20 @@ onMounted(() => {
     </div>
 
     <div class="map-container">
-      <routeAll v-if="currentRoute === 'routeAll'" />
+      <!-- routeAll рисует только линию маршрута -->
+      <routeAll 
+        :route-slug="currentRouteSlug"
+      />
 
-      <template v-else>
+      <!-- GenericPopup добавляет точки с popup -->
+      <template v-if="currentRoute !== 'routeAll'">
         <GenericPopup
           v-for="(route, id) in routesData"
           :key="id"
           v-show="currentRoute === id"
           ref="genericPopupRef"
           :points="route.points"
-          :route-geo-json-url="`./${route.slug}.geojson`"
+          :route-geo-json-url="`/${route.slug}.geojson`"
           @navigate="
             (point) => {
               isPathObjectOpened = true

@@ -11,14 +11,14 @@ class Route extends Model
     protected $fillable = [
 
         'title',
-        'map_color',
+        'mapColor',
         'description',
         'points',
         'duration',
         'distance',
         'participants',
-        'audience'
-
+        'audience',
+        'slug'
     ];
 
     public function point()

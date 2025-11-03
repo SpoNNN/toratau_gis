@@ -330,15 +330,11 @@ const onFinishFailed = (errorInfo: any) => {
             <h2 class="text-white mb-4">Точки маршрута</h2>
 
             <div v-if="route.point && route.point.length > 0" class="timeline-container">
-              <div class="timeline-item" v-for="(point, index) in route.point" :key="index">
+              <div class="timeline-item" v-for="(point, index) in route.point" :key="index"  style="align-items: center; display: flex;">
                 <div class="timeline-number">{{ index + 1 }}</div>
 
                 <div class="timeline-text" >
-                  <h3>{{ point.name }}</h3>
-                  <p style="margin-top: 25px;">{{ point.description }}</p>
-                  <p class="coordinates">lon= {{ point.lon }}, lat= {{ point.lat }}</p>
-                  <p>Адрес: {{ point.address }}</p>
-
+                  <p style="margin-top: 0.25rem;">{{ point.name }}</p>
                   <!-- Отображение изображений -->
                   <div v-if="point.images && point.images.length > 0" class="point-images">
                     <div class="images-grid">

@@ -105,7 +105,7 @@ const selectedPointStyle = new Style({
 })
 
 onMounted(() => {
-  // === Стили для точек ===
+ 
 
   let routeColor = '#ffb800'
   if (props.routeGeoJsonUrl === './tsiolkovsky.geojson') {
@@ -131,7 +131,7 @@ onMounted(() => {
     }),
   })
 
-  // Добавляем маршрут
+
   if (props.routeGeoJsonUrl && map.value) {
     const routeSource = new VectorSource()
     fetch(props.routeGeoJsonUrl)
@@ -162,15 +162,14 @@ onMounted(() => {
     map.value.addLayer(new VectorLayer({ source: routeSource, zIndex: 1 }))
   }
 
-  // Добавляем точки
+
   pointSource.value = new VectorSource()
   props.points.forEach((point) => {
-    console.log('_ _ _ _ ')
-    console.log('для поинта', point, 'создаем feature')
+
     const feature = new Feature({
       geometry: new Point(fromLonLat([point.lon, point.lat])),
     })
-    console.log('feature создан', feature)
+
     feature.set('properties', point)
     feature.setStyle(defaultPointStyle.value)
     if (pointSource.value) {
@@ -186,7 +185,6 @@ onMounted(() => {
       }),
     )
 
-    // Обработка кликов по карте
     map.value.on('singleclick', (evt) => {
       if (!mapElement || !map.value) return
 
@@ -194,7 +192,7 @@ onMounted(() => {
         if (feature instanceof Feature) {
           const properties = feature.get('properties')
           if (properties && properties.name) {
-            // Сброс предыдущей выбранной точки
+         
             if (selectedFeature.value) {
               selectedFeature.value.setStyle(defaultPointStyle.value)
             }
@@ -236,7 +234,7 @@ onMounted(() => {
   }
 })
 
-// === Закрытие popup ===
+
 function hidePopup() {
   popupVisible.value = false
   if (selectedFeature.value) {
@@ -247,15 +245,9 @@ function hidePopup() {
   currentImageIndex.value = 0
 }
 
-// === Переход на полноценную страницу попапа, на который нажато подробнее ===
+
 function navigateToPage() {
-  // console.log('currentPoint в этот момент равна', currentPoint.value)
-  // console.log(
-  //   'props.pointNameToPageMap[popupText.value]',
-  //   props.pointNameToPageMap[popupText.value],
-  // )
-  // const page = props.pointNameToPageMap[popupText.value]
-  // console.log('после нажатия, page:', page)
+
   const newSelectedPoint = currentPoint.value
   // if (page) {
   // }
@@ -265,7 +257,6 @@ function navigateToPage() {
   }, 300)
 }
 
-// === Открытие попапа по имени точки ===
 const openPopupByName = (name: string) => {
   console.log('openPopupByName это наш нейм в openPopupByName', name)
   if (!pointSource.value || !map.value) return
@@ -323,7 +314,7 @@ defineExpose({ openPopupByName })
 </script>
 
 <style scoped>
-/* Можно скопировать стили из popup_sokrat.vue */
+
 .map {
   width: 100%;
   min-height: 1200px;

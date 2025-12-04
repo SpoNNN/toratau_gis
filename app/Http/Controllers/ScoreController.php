@@ -79,4 +79,32 @@ class ScoreController extends Controller
             ]
         ]);
     }
+    public function userReviews()
+{
+    $user = auth()->user();
+
+    $reviews = Score::with('route')
+        ->where('user_id', $user->id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    return response()->json([
+        'data' => $reviews->map(function ($review) {
+            return [
+                'id'        => $review->id,
+                'route_id'  => $review->route_id,
+                'rating'    => $review->star_rate,
+                'comment'   => $review->text,
+                'created_at'=> $review->created_at,
+                'route'     => [
+                    'id'    => $review->route->id,
+                    'title' => $review->route->title,
+                    'slug'  => $review->route->slug,
+                    'mapColor' => $review->route->mapColor,
+                ]
+            ];
+        })
+    ]);
+}
+
 }

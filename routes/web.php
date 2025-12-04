@@ -34,7 +34,7 @@ Route::prefix('api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/user', [AuthController::class, 'user']);
         Route::post('/routes/{id}/points', [PointController::class, 'addPoint']);
-
+        Route::get('/user/reviews', [ScoreController::class, 'userReviews']);
 
         Route::prefix('favorites')->group(function () {
             Route::get('/', [FavoriteController::class, 'index']);

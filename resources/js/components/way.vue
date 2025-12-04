@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineProps, defineEmits } from 'vue'
 import axios from 'axios'
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import { useAuthCheck } from '../utils/useAuthCheck' 
 import SearchInput from './SearchInput.vue'
 import buttons from './buttons.vue'
 import filterPop from './filterPop.vue'
@@ -29,18 +26,18 @@ interface Filters {
   maxDuration: number
 }
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyDnXXJ1R-lkoheA8LEJuHLzy2kjUvcC4-w',
-  authDomain: 'myproject-35bc3.firebaseapp.com',
-  projectId: 'myproject-35bc3',
-  storageBucket: 'myproject-35bc3.firebasestorage.app',
-  messagingSenderId: '1064017138140',
-  appId: '1:1064017138140:web:b294ccd4f2b9c9762abf19'
-}
 
-const app = initializeApp(firebaseConfig)
-const db = getFirestore(app)
-const auth = getAuth(app)
+const props = defineProps<{
+  isLoggedIn?: boolean
+}>()
+
+const emit = defineEmits<{
+  selectRoute: [id: number]
+  navigate: [page: string]
+}>()
+
+
+const { isAuthenticated, checkAuth } = useAuthCheck()
 
 const routes = ref<Route[]>([])
 const searchQuery = ref('')
@@ -56,6 +53,19 @@ const filters = ref({
   selectedAudience: '',
   minDuration: 0,
   maxDuration: 300
+})
+
+const userIsLoggedIn = computed(() => {
+  console.log('userIsLoggedIn computed - isAuthenticated:', isAuthenticated.value)
+  return isAuthenticated.value
+})
+
+const hasToken = computed(() => {
+  if (typeof window === 'undefined') return false
+  
+  const token = localStorage.getItem('auth_token')
+  console.log('hasToken computed - token:', token ? 'ЕСТЬ' : 'НЕТ')
+  return !!token
 })
 
 const loadRoutes = async () => {
@@ -91,64 +101,69 @@ const loadRoutes = async () => {
 
 const loadFavorites = async () => {
   try {
-    const user = auth.currentUser
-    let favorites: any[] = []
+    console.log('loadFavorites - userIsLoggedIn:', userIsLoggedIn.value)
     
-    if (user) {
-      const userDoc = await getDoc(doc(db, 'users', user.uid))
-      if (userDoc.exists()) {
-        favorites = userDoc.data().favorites || []
-      }
-    } else {
-      favorites = JSON.parse(localStorage.getItem('favorites') || '[]')
+    if (!userIsLoggedIn.value) {
+      console.log('Пользователь не авторизован')
+      routes.value.forEach(route => {
+        route.isFavorite = false
+      })
+      return
     }
     
+    const response = await axios.get('/favorites')
+    const favorites = response.data.data || []
+    console.log('Loaded favorites from Laravel:', favorites.length)
+
     routes.value.forEach(route => {
-      route.isFavorite = favorites.some((fav: any) => fav.id === route.id)
+      route.isFavorite = favorites.some((favorite: any) => 
+        favorite.route_id === route.id || favorite.route?.id === route.id
+      )
     })
     
   } catch (err) {
     console.error('Failed to load favorites:', err)
+    routes.value.forEach(route => {
+      route.isFavorite = false
+    })
   }
 }
 
 const toggleFavorite = async (route: Route) => {
   try {
-    route.isFavorite = !route.isFavorite
-    const user = auth.currentUser
-    
-    const favoriteData = {
-      id: route.id,
-      title: route.title,
-      slug: route.slug
+    if (!userIsLoggedIn.value) {
+      alert('Для добавления в избранное необходимо войти в аккаунт')
+      return
     }
     
-    if (user) {
-      const userDocRef = doc(db, 'users', user.uid)
-      
-      if (route.isFavorite) {
-        await updateDoc(userDocRef, {
-          favorites: arrayUnion(favoriteData)
-        })
-      } else {
-        await updateDoc(userDocRef, {
-          favorites: arrayRemove(favoriteData)
-        })
-      }
+  
+    const wasFavorite = route.isFavorite
+    route.isFavorite = !wasFavorite
+    
+    if (route.isFavorite) {
+  
+      await axios.post('/favorites', {
+        route_id: route.id
+      })
+      console.log(`Маршрут ${route.id} добавлен в избранное`)
     } else {
-      let favorites = JSON.parse(localStorage.getItem('favorites') || '[]')
-      
-      if (route.isFavorite) {
-        favorites.push(favoriteData)
-      } else {
-        favorites = favorites.filter((fav: any) => fav.id !== route.id)
-      }
-      
-      localStorage.setItem('favorites', JSON.stringify(favorites))
+   
+      await axios.delete(`/favorites/${route.id}`)
+      console.log(`Маршрут ${route.id} удален из избранного`)
     }
+    
   } catch (err) {
     console.error('Failed to toggle favorite:', err)
+
     route.isFavorite = !route.isFavorite
+    
+    if (axios.isAxiosError(err)) {
+      if (err.response?.status === 401) {
+        alert('Сессия истекла. Пожалуйста, войдите снова.')
+      } else {
+    
+      }
+    }
   }
 }
 
@@ -193,20 +208,26 @@ const filteredRoutes = computed(() => {
   })
 })
 
-onMounted(() => {
+onMounted(async () => {
+  console.log('way.vue mounted')
+  
+  await checkAuth()
+  console.log('checkAuth result:', isAuthenticated.value)
+  console.log('localStorage token:', !!localStorage.getItem('auth_token'))
+  
   const savedFilters = JSON.parse(localStorage.getItem('filters') || '{}')
   if (savedFilters) {
     filters.value = { ...filters.value, ...savedFilters }
   }
   
-  loadRoutes()
-  
-  onAuthStateChanged(auth, () => {
-    loadFavorites()
-  })
-})
 
-defineEmits(['selectRoute'])
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  }
+  
+  loadRoutes()
+})
 </script>
 
 <template>
@@ -230,24 +251,25 @@ defineEmits(['selectRoute'])
   </div>
 
   <div v-else-if="favoritesLoaded" class="space-y-3 mt-4" style="width: 420px">
-    <buttons
-      v-for="route in filteredRoutes"
-      :key="route.id"
-      :title="route.title"
-      :id="route.id"
-      :is-favorite="route.isFavorite"
-      @toggle-favorite="toggleFavorite(route)"
-      @click="
-        () => {
-          if (route.id) {
-            selectedRouteId = route.id
-       $emit('selectRoute', Number(route.id))
-            axios.get('/api/routes/' + route.id)
-            console.log('Мы перешли в роут с айди', route.id)
-          }
-        }
-      "
-    />
+
+    
+<buttons
+  v-for="route in filteredRoutes"
+  :key="route.id"
+  :title="route.title"
+  :route-id="route.id"      
+  :is-favorite="route.isFavorite"
+  :is-logged-in="userIsLoggedIn"
+  @toggle-favorite="() => toggleFavorite(route)"
+  @click="
+    () => {
+      selectedRouteId = route.id
+      emit('selectRoute', Number(route.id))
+      console.log('Мы перешли в роут с айди', route.id)
+    }
+  "
+/>
+
   </div>
 
   <div class="mt-4 flex justify-center">

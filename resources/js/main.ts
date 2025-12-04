@@ -1,20 +1,13 @@
-
 import '../assets/main.css'
-import '../css/app.css';
-
+import '../css/app.css'
 import { createApp } from 'vue'
-import App from './App2.vue'
+import App from './App.vue'  
 import router from './router'
 import Antd from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import { createPinia } from 'pinia'
-
-// Import the functions you need from the SDKs you need
 import { initializeApp } from '@firebase/app'
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: 'AIzaSyDnXXJ1R-lkoheA8LEJuHLzy2kjUvcC4-w',
   authDomain: 'myproject-35bc3.firebaseapp.com',
@@ -27,11 +20,6 @@ const firebaseConfig = {
 initializeApp(firebaseConfig)
 
 const app = createApp(App)
-
 app.use(router)
-
-app.use(Antd).mount('#app')
-
-// const pinia = createPinia()
-
-// app.use(pinia)
+app.use(Antd)
+app.mount('#app')

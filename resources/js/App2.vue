@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick } from 'vue'
 import axios from 'axios'
-import { initializeApp } from '@firebase/app'
-import { getAuth, onAuthStateChanged, signOut } from '@firebase/auth'
-
 
 import Header2 from './components/Header2.vue'
 import selectedObject from './components/selectedObject.vue'
@@ -14,8 +11,8 @@ import signIn from './views/signIn.vue'
 import RouteDetails from './components/RouteDetails.vue'
 import favoritesPage from './components/favoritesPage.vue'
 import GenericPopup from './components/Socrat/GenericPopup.vue'
-
-
+import { useRouter, useRoute } from 'vue-router'
+import ReviewsComponent from './components/ReviewsComponent.vue'
 interface Point {
   id: number
   lon: number
@@ -53,20 +50,8 @@ interface RoutesData {
   [key: string]: Route
 }
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: 'AIzaSyDnXXJ1R-lkoheA8LEJuHLzy2kjUvcC4-w',
-  authDomain: 'myproject-35bc3.firebaseapp.com',
-  projectId: 'myproject-35bc3',
-  storageBucket: 'myproject-35bc3.firebasestorage.app',
-  messagingSenderId: '1064017138140',
-  appId: '1:1064017138140:web:b294ccd4f2b9c9762abf19'
-}
-
 // App state
 const API_BASE_URL = '/api'
-const app = initializeApp(firebaseConfig)
-const auth = getAuth(app)
 const routesData = ref<RoutesData>({})
 const currentPage = ref<string>('way')
 const currentRoute = ref<string>('routeAll')
@@ -89,7 +74,6 @@ const fetchRoutes = async () => {
     response.data.data.forEach((route: any) => {
       const routeKey = `route${route.slug}`
       
-
       const infoItems = Array.isArray(route.route_infos) 
         ? route.route_infos.reduce((acc: any, info: any) => {
             acc[info.key] = {
@@ -102,7 +86,6 @@ const fetchRoutes = async () => {
           }, {}) 
         : {}
 
- 
       let points: Point[] = []
       if (Array.isArray(route.points)) {
         points = route.points.map((point: any) => ({
@@ -158,7 +141,6 @@ const handleSelectRoute = (routeId: number) => {
   selectedRouteId.value = routeId
   console.log('selectedRouteId.value установлен:', selectedRouteId.value)
   
-
   const selectedRoute = Object.values(routesData.value).find(r => r.id === routeId)
   if (selectedRoute) {
     currentRoute.value = `route${selectedRoute.slug}`
@@ -171,7 +153,6 @@ const handleSelectRoute = (routeId: number) => {
 
 const handleCreateObject = (object: any) => {
   console.log('Создан объект:', object)
- 
 }
 
 const updateClick = (data: Point, route: Route) => {
@@ -197,13 +178,32 @@ const handleNavigateBack = () => {
   currentPage.value = 'RouteDetails.vue'
   isPathObjectOpened.value = false
 }
-
-const handleSignOut = () => {
-  signOut(auth).then(() => {
+const router = useRouter()
+const handleSignOut = async () => {
+  try {
+    await axios.post('/api/logout')
+    
+  } catch (error) {
+    console.error('Logout error:', error)
+  } finally {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user')
+    delete axios.defaults.headers.common['Authorization']
     isLoggedIn.value = false
-  })
+    currentPage.value = 'way'
+ 
+  }
+}
+const handleLoggedIn = (user: any) => {
+  isLoggedIn.value = true
+  currentPage.value = 'way'
+
 }
 
+const handleRegistered = (user: any) => {
+  isLoggedIn.value = true
+  currentPage.value = 'way'
+}
 
 const currentRouteData = computed<Route>(() => {
   if (currentRoute.value in routesData.value) {
@@ -221,17 +221,14 @@ const currentRouteData = computed<Route>(() => {
   }
 })
 
-
 const currentRouteSlug = computed<string | null>(() => {
   if (currentRoute.value === 'routeAll') {
     return null 
   }
   
-
   const slug = currentRoute.value.replace('route', '').toLowerCase()
   return slug || null
 })
-
 
 const currentRoutePoints = computed(() => {
   if (currentRoute.value === 'routeAll') {
@@ -241,13 +238,20 @@ const currentRoutePoints = computed(() => {
   return currentRouteData.value?.points || []
 })
 
-
 onMounted(() => {
   fetchRoutes()
+ 
+  const token = localStorage.getItem('auth_token')
+  console.log('App.vue onMounted - token:', token)
   
-  onAuthStateChanged(auth, (user) => {
-    isLoggedIn.value = !!user
-  })
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    isLoggedIn.value = true
+    console.log('App.vue - isLoggedIn установлен в true')
+  } else {
+    isLoggedIn.value = false
+    console.log('App.vue - isLoggedIn установлен в false')
+  }
 })
 </script>
 
@@ -287,7 +291,6 @@ onMounted(() => {
         @selectRoute="handleSelectRoute"
       />
 
-
       <RouteDetails 
         v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
         :route-id="selectedRouteId"  
@@ -305,8 +308,17 @@ onMounted(() => {
         }"
       />
 
-      <register v-if="currentPage === 'register'" />
-      <signIn v-if="currentPage === 'signIn'" />
+      <register 
+        v-if="currentPage === 'register'" 
+        @registered="handleRegistered"
+        @switchToSignIn="currentPage = 'signIn'"
+      />
+      
+      <signIn 
+        v-if="currentPage === 'signIn'" 
+        @loggedIn="handleLoggedIn"
+        @switchToRegister="currentPage = 'register'"
+      />
 
       <favoritesPage
         v-if="currentPage === 'favorites'"
@@ -314,6 +326,12 @@ onMounted(() => {
         @navigate="handleNavigate"
         @selectRoute="handleSelectRoute"
       />
+<ReviewsComponent 
+  v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
+  :route-id="selectedRouteId"
+  :is-logged-in="isLoggedIn"   
+  
+/>
 
       <selectedObject
         v-if="isPathObjectOpened && currentPointData"
@@ -323,12 +341,12 @@ onMounted(() => {
     </div>
 
     <div class="map-container">
-      <!-- routeAll рисует только линию маршрута -->
+   
       <routeAll 
         :route-slug="currentRouteSlug"
       />
 
-      <!-- GenericPopup добавляет точки с popup -->
+     
       <template v-if="currentRoute !== 'routeAll'">
         <GenericPopup
           v-for="(route, id) in routesData"

@@ -4,7 +4,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
-
+import ReviewsComponent from './ReviewsComponent.vue'
 const open = ref<boolean>(false)
 const isLoading = ref<boolean>(false)
 const error = ref<string | null>(null)
@@ -292,7 +292,7 @@ const onFinishFailed = (errorInfo: any) => {
 
         <div class="mt-5">
 
-          <!-- Вкладка "О маршруте" -->
+          
           <div v-if="activeTab === 'about'">
 
             <p class="text-white" style="margin: 10px">{{ route.description }}</p>
@@ -301,15 +301,15 @@ const onFinishFailed = (errorInfo: any) => {
               <dl class="text-white">
 
 
-                <template v-if="route.info_items && Object.keys(route.info_items).length > 0">
+                <template v-if="route.info_items && Object.keys(route.info_items).length >= 0">
                   <template v-for="(infoItem, key) in route.info_items" :key="key">
                     <dt style="display: flex; align-items: center; gap: 8px;"><img
                         :src="0 ? 'Аудитория.svg' : 'Аудитория.svg'" /><strong>Целевая аудитория:</strong> {{
                           route.audience }} лет</dt>
-                    <dt style="display: flex;  gap: 8px;"><img
+                    <dt style="display: flex;  gap: 6px;"><img
                         :src="0 ? 'Программа обслуживания и посещения.svg' : 'Программа обслуживания и посещения.svg'" /><strong>Программа
-                        обслуживания и посещения:</strong> </dt>
-                    <dd style="gap: 8px;">{{ infoItem.value }}</dd>
+                        обслуживания и посещения:</strong>   </dt>
+                  <dd style="gap: 8px;">{{ infoItem.value }}</dd>
                     <dt style="display: flex; align-items: center; gap: 8px;"><img
                         :src="0 ? 'Продолжительность.svg' : 'Продолжительность.svg'" /><strong>Продолжительность:</strong>
                       {{ formattedDuration }}</dt>
@@ -325,7 +325,7 @@ const onFinishFailed = (errorInfo: any) => {
             </div>
           </div>
 
-          <!-- Вкладка "Объекты маршрута" -->
+
           <div v-if="activeTab === 'objects'" class="objects-tab">
             <h2 class="text-white mb-4">Точки маршрута</h2>
 
@@ -335,18 +335,7 @@ const onFinishFailed = (errorInfo: any) => {
 
                 <div class="timeline-text" >
                   <p style="margin-top: 0.25rem;">{{ point.name }}</p>
-                  <!-- Отображение изображений -->
-                  <div v-if="point.images && point.images.length > 0" class="point-images">
-                    <div class="images-grid">
-                      <img v-for="(image, imgIndex) in point.images.slice(0, 3)" :key="imgIndex" :src="image"
-                        :alt="`${point.name} - изображение ${imgIndex + 1}`" class="point-image"
-                        @click="() => openImageModal(point.images, imgIndex)" />
-                      <div v-if="point.images.length > 3" class="more-images"
-                        @click="() => openImageModal(point.images, 3)">
-                        +{{ point.images.length - 3 }}
-                      </div>
-                    </div>
-                  </div>
+             
                 </div>
 
                 <div @click="navigateToPage(point)" class="info-icon" title="Подробнее">
@@ -367,7 +356,6 @@ const onFinishFailed = (errorInfo: any) => {
               Добавить объект
             </a-button>
 
-            <!-- Модальное окно добавления объекта -->
             <a-modal v-model:open="open" title="Добавить точку маршрута" :footer="null" width="600px">
               <a-form :model="formState" layout="vertical" @finish="onFinish" @finishFailed="onFinishFailed">
                 <a-form-item name="name" label="Название точки"
@@ -435,7 +423,7 @@ const onFinishFailed = (errorInfo: any) => {
               </a-form>
             </a-modal>
 
-            <!-- Модалка для просмотра изображений -->
+           
             <a-modal v-model:open="imageModalVisible" :footer="null" width="80%" style="max-width: 1000px;">
               <div class="image-viewer">
                 <img v-if="currentImages[currentImageIndex]" :src="currentImages[currentImageIndex]"

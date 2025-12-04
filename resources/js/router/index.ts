@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// import HomeView from '../views/HomeView.vue'
-import App from '../App2.vue'
-// import page2 from '@/components/page2.vue'
+import App2 from '../App2.vue'  // <--- Ваш основной компонент
 import Register from '../views/register.vue'
+import Profile from '../views/Profile.vue'
+import SignIn from '../views/signIn.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,25 +10,22 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: App,
+      component: App2,  
     },
-
-    // {
-    //   path: '/page2',
-    //   name: 'page2',
-    //   // route level code-splitting
-    //   // this generates a separate chunk (About.[hash].js) for this route
-    //   // which is lazy-loaded when the route is visited.
-    //   component: page2,
-    // },
-
+    {
+      path: '/profile',
+      name: 'profile',
+      component: Profile,
+    },
     {
       path: '/register',
       name: 'register',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
       component: Register,
+    },
+    {
+      path: '/signin',
+      name: 'signIn',
+      component: SignIn,
     },
   ],
 })

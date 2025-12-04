@@ -12,11 +12,11 @@
     import View from 'ol/View';
     import { fromLonLat } from 'ol/proj';
     import 'ol/ol.css';
-    import { Point } from 'ol/geom'; // Для создания геометрии точки
-    import { Feature } from 'ol'; // Для создания объекта (Feature)
-    import { Vector as VectorLayer } from 'ol/layer'; // Для создания векторного слоя
-    import { Vector as VectorSource } from 'ol/source'; // Для создания источника векторных объектов
-    import { Style, Fill, Stroke, Circle } from 'ol/style'; // Для стилизации точек
+    import { Point } from 'ol/geom'; 
+    import { Feature } from 'ol'; 
+    import { Vector as VectorLayer } from 'ol/layer'; 
+    import { Vector as VectorSource } from 'ol/source'; 
+    import { Style, Fill, Stroke, Circle } from 'ol/style'; 
   
     export default {
       name: 'MapComponent',
@@ -36,7 +36,7 @@
         };
   
         onMounted(() => {
-          // Массив координат для точек
+     
           const coordinates = [
             [55.936081, 54.720401],
             [55.940732, 54.724981],
@@ -48,46 +48,46 @@
             [55.989414, 54.741021],
           ];
   
-          // Создание источника для векторного слоя
+       
           const vectorSource = new VectorSource();
   
-          // Создание стиля для точки
+    
           const pointStyle = new Style({
             image: new Circle({
-              radius: 7, // Размер точки
+              radius: 7, 
               fill: new Fill({
-                color: 'rgba(0, 148, 255, 1)', // Цвет точки
+                color: 'rgba(0, 148, 255, 1)', 
               }),
               stroke: new Stroke({
-                color: 'black', // Цвет обводки
-                width: 1, // Толщина обводки
+                color: 'black', 
+                width: 1, 
               }),
             }),
           });
   
-          // Добавляем точки в источник
+      
           coordinates.forEach(coord => {
-            const point = new Point(fromLonLat(coord)); // Преобразуем координаты в формат, нужный для OpenLayers
+            const point = new Point(fromLonLat(coord));
             const pointFeature = new Feature({
               geometry: point,
             });
-            pointFeature.setStyle(pointStyle); // Применяем стиль
-            vectorSource.addFeature(pointFeature); // Добавляем точку в источник
+            pointFeature.setStyle(pointStyle);
+            vectorSource.addFeature(pointFeature); 
           });
   
-          // Создание векторного слоя с точками
+    
           const vectorLayer = new VectorLayer({
             source: vectorSource,
           });
   
-          // Инициализация карты
+      
           map = new Map({
             target: 'map',
             layers: [
               new TileLayer({
                 source: new OSM(),
               }),
-              vectorLayer, // Добавляем векторный слой с точками
+              vectorLayer, 
             ],
             view: new View({
               center: fromLonLat([55.9721, 54.7388]), // Центр карты (Уфа)

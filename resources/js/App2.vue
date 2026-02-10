@@ -1,267 +1,10 @@
-<script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
-import axios from 'axios'
-
-import Header2 from './components/Header2.vue'
-import selectedObject from './components/selectedObject.vue'
-import way from './components/way.vue'
-import routeAll from './components/routeAll.vue'
-import register from './views/register.vue'
-import signIn from './views/signIn.vue'
-import RouteDetails from './components/RouteDetails.vue'
-import favoritesPage from './components/favoritesPage.vue'
-import GenericPopup from './components/Socrat/GenericPopup.vue'
-import { useRouter, useRoute } from 'vue-router'
-import ReviewsComponent from './components/ReviewsComponent.vue'
-interface Point {
-  id: number
-  lon: number
-  lat: number
-  name: string
-  address: string
-  url: string
-  pointName: string
-  description: string
-  images: string[]
-}
-
-interface RouteInfo {
-  id: number
-  key: string
-  label: string
-  value: string
-}
-
-interface Route {
-  id: number
-  title: string
-  mapColor: string
-  description: string
-  slug: string
-  infoItems: Record<string, RouteInfo>
-  points: Point[]
-  duration?: number
-  distance?: number
-  participants?: number
-  audience?: string
-}
-
-interface RoutesData {
-  [key: string]: Route
-}
-
-// App state
-const API_BASE_URL = '/api'
-const routesData = ref<RoutesData>({})
-const currentPage = ref<string>('way')
-const currentRoute = ref<string>('routeAll')
-const isLoggedIn = ref<boolean>(false)
-const isLoading = ref<boolean>(true)
-const error = ref<string | null>(null)
-const currentPointData = ref<Point | null>(null)
-const isPathObjectOpened = ref<boolean>(false)
-const genericPopupRef = ref<any>(null)
-const wayRef = ref<any>(null)
-const selectedRouteId = ref<number | null>(null)
-
-// Methods
-const fetchRoutes = async () => {
-  try {
-    isLoading.value = true
-    const response = await axios.get(`${API_BASE_URL}/routes`)
-    
-    const transformedData: RoutesData = {}
-    response.data.data.forEach((route: any) => {
-      const routeKey = `route${route.slug}`
-      
-      const infoItems = Array.isArray(route.route_infos) 
-        ? route.route_infos.reduce((acc: any, info: any) => {
-            acc[info.key] = {
-              id: info.id,
-              key: info.key,
-              label: info.label,
-              value: info.value
-            }
-            return acc
-          }, {}) 
-        : {}
-
-      let points: Point[] = []
-      if (Array.isArray(route.points)) {
-        points = route.points.map((point: any) => ({
-          id: point.id,
-          lon: parseFloat(point.lon),
-          lat: parseFloat(point.lat),
-          name: point.name,
-          address: point.address,
-          url: point.url,
-          pointName: point.point_name || '',
-          description: point.description || '',
-          images: point.images ? (typeof point.images === 'string' ? JSON.parse(point.images) : point.images) : []
-        }))
-      } else if (route.points && typeof route.points === 'object') {
-        points = [{
-          id: route.points.id,
-          lon: parseFloat(route.points.lon),
-          lat: parseFloat(route.points.lat),
-          name: route.points.name,
-          address: route.points.address,
-          url: route.points.url,
-          pointName: route.points.point_name || '',
-          description: route.points.description || '',
-          images: route.points.images ? (typeof route.points.images === 'string' ? JSON.parse(route.points.images) : route.points.images) : []
-        }]
-      }
-      
-      transformedData[routeKey] = {
-        id: route.id,
-        title: route.title,
-        mapColor: route.map_color,
-        description: route.description,
-        slug: route.slug,
-        infoItems,
-        points
-      }
-    })
-    
-    routesData.value = transformedData
-    error.value = null
-  } catch (err) {
-    console.error('Ошибка загрузки маршрутов:', err)
-    error.value = 'Не удалось загрузить данные маршрутов'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const handleSelectRoute = (routeId: number) => {
-  console.log('=== handleSelectRoute вызван ===')
-  console.log('Получен routeId:', routeId, 'тип:', typeof routeId)
-  
-  selectedRouteId.value = routeId
-  console.log('selectedRouteId.value установлен:', selectedRouteId.value)
-  
-  const selectedRoute = Object.values(routesData.value).find(r => r.id === routeId)
-  if (selectedRoute) {
-    currentRoute.value = `route${selectedRoute.slug}`
-    console.log('currentRoute установлен:', currentRoute.value)
-  }
-  
-  currentPage.value = 'RouteDetails.vue'
-  console.log('currentPage установлен:', currentPage.value)
-}
-
-const handleCreateObject = (object: any) => {
-  console.log('Создан объект:', object)
-}
-
-const updateClick = (data: Point, route: Route) => {
-  const routeKey = `route${route.slug}`
-  currentRoute.value = routeKey
-
-  nextTick(() => {
-    if (genericPopupRef.value) {
-      genericPopupRef.value.openPopupByName(data.name)
-    }
-  })
-}
-
-const handleNavigate = (page: string) => {
-  if (page === 'way') {
-    currentRoute.value = 'routeAll'
-    selectedRouteId.value = null
-  }
-  currentPage.value = page
-}
-
-const handleNavigateBack = () => {
-  currentPage.value = 'RouteDetails.vue'
-  isPathObjectOpened.value = false
-}
-const router = useRouter()
-const handleSignOut = async () => {
-  try {
-    await axios.post('/api/logout')
-    
-  } catch (error) {
-    console.error('Logout error:', error)
-  } finally {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user')
-    delete axios.defaults.headers.common['Authorization']
-    isLoggedIn.value = false
-    currentPage.value = 'way'
- 
-  }
-}
-const handleLoggedIn = (user: any) => {
-  isLoggedIn.value = true
-  currentPage.value = 'way'
-
-}
-
-const handleRegistered = (user: any) => {
-  isLoggedIn.value = true
-  currentPage.value = 'way'
-}
-
-const currentRouteData = computed<Route>(() => {
-  if (currentRoute.value in routesData.value) {
-    return routesData.value[currentRoute.value]
-  }
-  
-  return {
-    id: 0,
-    title: '',
-    description: '',
-    points: [],
-    infoItems: {},
-    mapColor: '',
-    slug: ''
-  }
-})
-
-const currentRouteSlug = computed<string | null>(() => {
-  if (currentRoute.value === 'routeAll') {
-    return null 
-  }
-  
-  const slug = currentRoute.value.replace('route', '').toLowerCase()
-  return slug || null
-})
-
-const currentRoutePoints = computed(() => {
-  if (currentRoute.value === 'routeAll') {
-    return []
-  }
-  
-  return currentRouteData.value?.points || []
-})
-
-onMounted(() => {
-  fetchRoutes()
- 
-  const token = localStorage.getItem('auth_token')
-  console.log('App.vue onMounted - token:', token)
-  
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    isLoggedIn.value = true
-    console.log('App.vue - isLoggedIn установлен в true')
-  } else {
-    isLoggedIn.value = false
-    console.log('App.vue - isLoggedIn установлен в false')
-  }
-})
-</script>
-
 <template>
   <Header2
     :isLoggedIn="isLoggedIn"
     @navigateToWay="
       () => {
         currentPage = 'way'
-        currentRoute = 'routeAll'
+        selectedRouteId = null
         isPathObjectOpened = false
       }
     "
@@ -294,8 +37,8 @@ onMounted(() => {
       <RouteDetails 
         v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
         :route-id="selectedRouteId"  
-        @select-object="(point: Point) => updateClick(point, currentRouteData)"
-        @navigate="(point: Point) => {
+        @select-object="(point) => updateClick(point)"
+        @navigate="(point) => {
           isPathObjectOpened = true
           currentPointData = point
           currentPage = 'Details Opened'
@@ -303,7 +46,6 @@ onMounted(() => {
         @create-object="handleCreateObject"
         @back="() => {
           currentPage = 'way'
-          currentRoute = 'routeAll'
           selectedRouteId = null
         }"
       />
@@ -326,12 +68,12 @@ onMounted(() => {
         @navigate="handleNavigate"
         @selectRoute="handleSelectRoute"
       />
-<ReviewsComponent 
-  v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
-  :route-id="selectedRouteId"
-  :is-logged-in="isLoggedIn"   
-  
-/>
+
+      <ReviewsComponent 
+        v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
+        :route-id="selectedRouteId"
+        :is-logged-in="isLoggedIn"   
+      />
 
       <selectedObject
         v-if="isPathObjectOpened && currentPointData"
@@ -341,32 +83,223 @@ onMounted(() => {
     </div>
 
     <div class="map-container">
-   
+      <!-- Карта с маршрутом и точками -->
       <routeAll 
-        :route-slug="currentRouteSlug"
+        v-if="selectedRouteId !== null"
+        :route-id="selectedRouteId"
+        :points="currentRoutePoints"
+        :route-color="currentRouteData.mapColor || '#FFB800'"
+        ref="mapRef"
+        @navigate="(point) => {
+          isPathObjectOpened = true
+          currentPointData = point
+          currentPage = 'Details Opened'
+        }"
       />
-
-     
-      <template v-if="currentRoute !== 'routeAll'">
-        <GenericPopup
-          v-for="(route, id) in routesData"
-          :key="id"
-          v-show="currentRoute === id"
-          ref="genericPopupRef"
-          :points="route.points"
-          :route-geo-json-url="`/${route.slug}.geojson`"
-          @navigate="
-            (point) => {
-              isPathObjectOpened = true
-              currentPointData = point
-              currentPage = 'Details Opened'
-            }
-          "
-        />
-      </template>
+      
+      <!-- Карта по умолчанию (без маршрута) -->
+      <routeAll 
+        v-else
+        :points="[]"
+      />
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref, onMounted, computed, nextTick } from 'vue'
+import axios from 'axios'
+
+import Header2 from './components/Header2.vue'
+import selectedObject from './components/selectedObject.vue'
+import way from './components/way.vue'
+import routeAll from './components/routeAll.vue'
+import register from './views/register.vue'
+import signIn from './views/signIn.vue'
+import RouteDetails from './components/RouteDetails.vue'
+import favoritesPage from './components/favoritesPage.vue'
+import ReviewsComponent from './components/ReviewsComponent.vue'
+
+const API_BASE_URL = '/api'
+const routesData = ref({})
+const currentPage = ref('way')
+const isLoggedIn = ref(false)
+const isLoading = ref(true)
+const error = ref(null)
+const currentPointData = ref(null)
+const isPathObjectOpened = ref(false)
+const mapRef = ref(null)
+const wayRef = ref(null)
+const selectedRouteId = ref(null)
+
+const fetchRoutes = async () => {
+  try {
+    isLoading.value = true
+    const response = await axios.get(`${API_BASE_URL}/routes`)
+    
+    const transformedData = {}
+    response.data.data.forEach((route) => {
+      const routeKey = `route${route.id}`
+      
+      const infoItems = Array.isArray(route.route_infos) 
+        ? route.route_infos.reduce((acc, info) => {
+            acc[info.key] = {
+              id: info.id,
+              key: info.key,
+              label: info.label,
+              value: info.value
+            }
+            return acc
+          }, {}) 
+        : {}
+
+      let points = []
+      if (Array.isArray(route.points)) {
+        points = route.points.map((point) => ({
+          id: point.id,
+          lon: parseFloat(point.lon),
+          lat: parseFloat(point.lat),
+          name: point.name,
+          address: point.address,
+          url: point.url,
+          pointName: point.point_name || '',
+          description: point.description || '',
+          images: point.images ? (typeof point.images === 'string' ? JSON.parse(point.images) : point.images) : []
+        }))
+      } else if (route.point && Array.isArray(route.point)) {
+        points = route.point.map((point) => ({
+          id: point.id,
+          lon: parseFloat(point.lon),
+          lat: parseFloat(point.lat),
+          name: point.name,
+          address: point.address,
+          url: point.url,
+          pointName: point.point_name || '',
+          description: point.description || '',
+          images: point.images ? (typeof point.images === 'string' ? JSON.parse(point.images) : point.images) : []
+        }))
+      }
+      
+      transformedData[routeKey] = {
+        id: route.id,
+        title: route.title,
+        mapColor: route.map_color,
+        description: route.description,
+        slug: route.slug,
+        infoItems,
+        points
+      }
+    })
+    
+    routesData.value = transformedData
+    error.value = null
+  } catch (err) {
+    console.error('Ошибка загрузки маршрутов:', err)
+    error.value = 'Не удалось загрузить данные маршрутов'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleSelectRoute = (routeId) => {
+  console.log('handleSelectRoute вызван, routeId:', routeId)
+  selectedRouteId.value = routeId
+  currentPage.value = 'RouteDetails.vue'
+}
+
+const handleCreateObject = async (object) => {
+  console.log('Создан объект:', object)
+  // Перезагружаем данные маршрута
+  await fetchRoutes()
+}
+
+const updateClick = (point) => {
+  nextTick(() => {
+    if (mapRef.value) {
+      mapRef.value.openPopupByName(point.name)
+    }
+  })
+}
+
+const handleNavigate = (page) => {
+  if (page === 'way') {
+    selectedRouteId.value = null
+  }
+  currentPage.value = page
+}
+
+const handleNavigateBack = () => {
+  currentPage.value = 'RouteDetails.vue'
+  isPathObjectOpened.value = false
+}
+
+const handleSignOut = async () => {
+  try {
+    await axios.post('/api/logout')
+  } catch (error) {
+    console.error('Logout error:', error)
+  } finally {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user')
+    delete axios.defaults.headers.common['Authorization']
+    isLoggedIn.value = false
+    currentPage.value = 'way'
+  }
+}
+
+const handleLoggedIn = (user) => {
+  isLoggedIn.value = true
+  currentPage.value = 'way'
+}
+
+const handleRegistered = (user) => {
+  isLoggedIn.value = true
+  currentPage.value = 'way'
+}
+
+const currentRouteData = computed(() => {
+  if (selectedRouteId.value === null) {
+    return {
+      id: 0,
+      title: '',
+      description: '',
+      points: [],
+      infoItems: {},
+      mapColor: '',
+      slug: ''
+    }
+  }
+  
+  const routeKey = `route${selectedRouteId.value}`
+  return routesData.value[routeKey] || {
+    id: 0,
+    title: '',
+    description: '',
+    points: [],
+    infoItems: {},
+    mapColor: '',
+    slug: ''
+  }
+})
+
+const currentRoutePoints = computed(() => {
+  return currentRouteData.value?.points || []
+})
+
+onMounted(() => {
+  fetchRoutes()
+ 
+  const token = localStorage.getItem('auth_token')
+  console.log('App.vue onMounted - token:', token)
+  
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    isLoggedIn.value = true
+  } else {
+    isLoggedIn.value = false
+  }
+})
+</script>
 
 <style scoped>
 .app-container {

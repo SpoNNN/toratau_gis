@@ -2,7 +2,6 @@
   <div>
     <div id="map" class="map" tabindex="0" style="min-height: 850px"></div>
 
-    <!-- Popup для точек -->
     <div
       v-if="popupVisible"
       :style="{ top: popupPosition.y + 'px', left: popupPosition.x + 'px' }"
@@ -22,7 +21,6 @@
       </div>
     </div>
 
-    <!-- Легенда (только для всех маршрутов) -->
     <div class="legend" v-if="showAllRoutes">
       <div class="legend-item">
         <span class="legend-line" style="background-color: rgba(0, 148, 255, 1)"></span>
@@ -69,7 +67,7 @@ import { Vector as VectorLayer } from 'ol/layer';
 import { Vector as VectorSource } from 'ol/source';
 import { Style, Stroke, Fill, Circle as CircleStyle } from 'ol/style';
 import { Feature } from 'ol';
-import { Point } from 'ol/geom';
+import { Point, LineString } from 'ol/geom';
 
 export default {
   name: 'MapWithPoints',
@@ -89,6 +87,7 @@ export default {
     let vectorLayers = [];
     let pointsLayer = null;
     let routePointsLayer = null;
+    let pointsRouteLayer = null;
     let selectedFeature = null;
 
     const showAllRoutes = ref(true);
@@ -109,7 +108,6 @@ export default {
       { slug: 'shen_ko', file: '/shen_ko.geojson', color: 'rgba(52, 215, 215, 1)', name: 'Шень Ко' },
     ];
 
-
     const defaultPointStyle = new Style({
       image: new CircleStyle({
         radius: 7,
@@ -127,10 +125,8 @@ export default {
     });
 
     const clearLayers = () => {
-  
       vectorLayers.forEach(layer => map.removeLayer(layer));
       vectorLayers = [];
-      
       
       if (pointsLayer) {
         map.removeLayer(pointsLayer);
@@ -141,20 +137,142 @@ export default {
         map.removeLayer(routePointsLayer);
         routePointsLayer = null;
       }
+
+      if (pointsRouteLayer) {
+        map.removeLayer(pointsRouteLayer);
+        pointsRouteLayer = null;
+      }
     };
 
-   
+    const buildRouteForPoints = async (points) => {
+      if (!points || points.length < 2) {
+        console.log('Недостаточно точек для построения маршрута');
+        return;
+      }
+
+      const coordinates = points.map(p => `${p.lon},${p.lat}`).join(';');
+      
+      try {
+        const response = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+          throw new Error('Маршрут не найден');
+        }
+
+        const routeCoordinates = data.routes[0].geometry.coordinates;
+        
+        const projectedCoordinates = routeCoordinates.map(coord => fromLonLat(coord));
+        
+        const lineFeature = new Feature({
+          geometry: new LineString(projectedCoordinates)
+        });
+
+        const routeStyle = new Style({
+          stroke: new Stroke({
+            color: 'rgba(255, 0, 0, 0.8)',
+            width: 5,
+          }),
+        });
+
+        lineFeature.setStyle(routeStyle);
+
+        const vectorSource = new VectorSource({
+          features: [lineFeature]
+        });
+
+        pointsRouteLayer = new VectorLayer({
+          source: vectorSource,
+          zIndex: 2
+        });
+
+        map.addLayer(pointsRouteLayer);
+        
+        const distance = (data.routes[0].distance / 1000).toFixed(2);
+        const duration = Math.round(data.routes[0].duration / 60);
+        console.log(`Маршрут построен: ${distance} км, ${duration} мин`);
+
+      } catch (error) {
+        console.error('Ошибка построения маршрута через OSRM:', error);
+        await buildRouteViaORS(points);
+      }
+    };
+
+    const buildRouteViaORS = async (points) => {
+      try {
+        const coordinates = points.map(p => [p.lon, p.lat]);
+        
+        const body = {
+          coordinates: coordinates
+        };
+
+        const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car/geojson', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': '5b3ce3597851110001cf6248YOUR_API_KEY_HERE'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        const geojsonFormat = new GeoJSON();
+        const features = geojsonFormat.readFeatures(data, {
+          featureProjection: 'EPSG:3857',
+        });
+
+        const routeStyle = new Style({
+          stroke: new Stroke({
+            color: 'rgba(255, 0, 0, 0.8)',
+            width: 5,
+          }),
+        });
+
+        features.forEach((feature) => {
+          feature.setStyle(routeStyle);
+        });
+
+        const vectorSource = new VectorSource({ features });
+        pointsRouteLayer = new VectorLayer({ 
+          source: vectorSource, 
+          zIndex: 2
+        });
+
+        map.addLayer(pointsRouteLayer);
+        console.log('Маршрут построен через OpenRouteService');
+
+      } catch (error) {
+        console.error('Ошибка построения маршрута через ORS:', error);
+      }
+    };
+
     const extractPointsFromGeoJSON = (geoJSONData, routeConfig) => {
       const points = [];
       
       try {
-        
         if (geoJSONData.features && geoJSONData.features.length > 0) {
           geoJSONData.features.forEach((feature, featureIndex) => {
             if (feature.geometry && feature.geometry.type === 'LineString') {
               const coordinates = feature.geometry.coordinates;
               
-            
               const importantPoints = [
                 coordinates[0], 
                 coordinates[Math.floor(coordinates.length / 4)], 
@@ -163,7 +281,6 @@ export default {
                 coordinates[coordinates.length - 1]
               ];
 
-            
               const uniquePoints = Array.from(new Set(importantPoints.map(JSON.stringify))).map(JSON.parse);
 
               uniquePoints.forEach((coord, index) => {
@@ -181,7 +298,6 @@ export default {
           });
         }
         
-      
         if (geoJSONData.features && geoJSONData.features[0]?.properties?.way_points) {
           const wayPoints = geoJSONData.features[0].properties.way_points;
           const coordinates = geoJSONData.features[0].geometry.coordinates;
@@ -207,8 +323,6 @@ export default {
     };
 
     const loadRoute = (routeConfig, shouldLoadPoints = false) => {
-
-      
       return fetch(routeConfig.file)
         .then((response) => {
           if (!response.ok) {
@@ -244,7 +358,6 @@ export default {
           map.addLayer(vectorLayer);
           vectorLayers.push(vectorLayer);
 
-         
           if (shouldLoadPoints) {
             const routePoints = extractPointsFromGeoJSON(data, routeConfig);
             addRoutePointsToMap(routePoints, routeConfig.color);
@@ -252,14 +365,11 @@ export default {
         })
         .catch((error) => {
           console.error(`Ошибка загрузки ${routeConfig.slug} из ${routeConfig.file}:`, error);
-          console.error('Убедитесь что файл существует в папке public/');
         });
     };
 
     const addRoutePointsToMap = (points, color) => {
       if (!points || points.length === 0) return;
-
-    
 
       const features = points.map((point) => {
         const feature = new Feature({
@@ -284,27 +394,20 @@ export default {
         const vectorSource = new VectorSource({ features });
         routePointsLayer = new VectorLayer({
           source: vectorSource,
-          zIndex: 3,  
+          zIndex: 3,
         });
         map.addLayer(routePointsLayer);
-       
       } else {
         routePointsLayer.getSource().addFeatures(features);
-     
       }
     };
 
     const loadPoints = () => {
- 
       if (!props.points || props.points.length === 0) {
-     
         return;
       }
 
-    
-
       const features = props.points.map((point, index) => {
-   
         console.log(`  Координаты: lon=${point.lon}, lat=${point.lat}`);
         
         const feature = new Feature({
@@ -317,40 +420,34 @@ export default {
         return feature;
       });
 
-     
-
       const vectorSource = new VectorSource({ features });
       pointsLayer = new VectorLayer({
         source: vectorSource,
-        zIndex: 4,  
+        zIndex: 4,
       });
 
       map.addLayer(pointsLayer);
-  
       console.log('Слоев на карте всего:', map.getLayers().getLength());
+
+      buildRouteForPoints(props.points);
     };
 
     const loadMap = () => {
       clearLayers();
 
       if (props.routeSlug) {
-       
         showAllRoutes.value = false;
         const routeConfig = routesConfig.find(r => r.slug === props.routeSlug);
         if (routeConfig) {
-     
           loadRoute(routeConfig, true).then(() => {
             loadPoints();
           });
         }
       } else {
-     
         showAllRoutes.value = true;
-       
-     
         const loadRoutesSequentially = async () => {
           for (const routeConfig of routesConfig) {
-            await loadRoute(routeConfig, false); // false - не загружать точки маршрута
+            await loadRoute(routeConfig, false);
           }
           loadPoints();
         };
@@ -361,7 +458,6 @@ export default {
     const hidePopup = () => {
       popupVisible.value = false;
       if (selectedFeature) {
-      
         const pointType = selectedFeature.get('properties')?.type;
         if (pointType === 'route_point' || pointType === 'way_point') {
           const routeConfig = routesConfig.find(r => r.slug === selectedFeature.get('properties')?.route);
@@ -401,7 +497,6 @@ export default {
         feature = features.find(f => f.get('properties').name === name);
       }
       
-   
       if (!feature && routePointsLayer) {
         const features = routePointsLayer.getSource().getFeatures();
         feature = features.find(f => f.get('properties').name === name);
@@ -409,7 +504,6 @@ export default {
 
       if (feature) {
         if (selectedFeature) {
-       
           const prevPointType = selectedFeature.get('properties')?.type;
           if (prevPointType === 'route_point' || prevPointType === 'way_point') {
             const routeConfig = routesConfig.find(r => r.slug === selectedFeature.get('properties')?.route);
@@ -469,7 +563,6 @@ export default {
         }),
       });
 
-   
       map.on('singleclick', (evt) => {
         const mapElement = document.getElementById('map');
         if (!mapElement) return;
@@ -478,7 +571,6 @@ export default {
           const properties = feature.get('properties');
           if (properties && properties.name) {
             if (selectedFeature) {
-             
               const prevPointType = selectedFeature.get('properties')?.type;
               if (prevPointType === 'route_point' || prevPointType === 'way_point') {
                 const routeConfig = routesConfig.find(r => r.slug === selectedFeature.get('properties')?.route);

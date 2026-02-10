@@ -1,13 +1,18 @@
+
 <script setup lang="ts">
 import SearchInput from './SearchInput.vue'
+import BookingCalendar from '../components/BookingCalendar.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
-import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
-import ReviewsComponent from './ReviewsComponent.vue'
+import { InfoCircleOutlined, PlusOutlined, CalendarOutlined } from '@ant-design/icons-vue'
+
 const open = ref<boolean>(false)
+const bookingModalVisible = ref<boolean>(false)
 const isLoading = ref<boolean>(false)
 const error = ref<string | null>(null)
+import { useAuthCheck } from '../utils/useAuthCheck';
+const { isAuthenticated, checkAuth } = useAuthCheck()
 
 interface RoutePoint {
   lon: number
@@ -41,7 +46,6 @@ interface Route {
 
 const route = ref<Route | null>(null)
 
-
 const props = defineProps<{
   routeId?: number
   route?: Route
@@ -49,31 +53,24 @@ const props = defineProps<{
 
 const emit = defineEmits(['select-object', 'navigate', 'create-object'])
 
-
 const vueRoute = useRoute()
 
 const actualRouteId = computed(() => {
-
   if (props.routeId) {
     return props.routeId
   }
 
-
   if (props.route && props.route.id) {
     return props.route.id
   }
-
 
   const idFromUrl = vueRoute.params.id || vueRoute.params.routeId
   if (idFromUrl) {
     return Number(idFromUrl)
   }
 
-
   return 1
 })
-
-
 
 const loadRoute = async (id: number) => {
   try {
@@ -87,15 +84,10 @@ const loadRoute = async (id: number) => {
       route.value = response.data
     }
 
-
   } catch (err) {
-
     error.value = 'Не удалось загрузить маршрут: ' + (err as any).message
   } finally {
     isLoading.value = false
-
-    console.log('error:', error.value)
-    console.log('route:', route.value)
   }
 }
 
@@ -110,12 +102,12 @@ const formattedDuration = computed(() => {
 
   return `${hours} ч ${minutes} мин`
 })
+
 watch(actualRouteId, (newId) => {
   if (newId) {
     loadRoute(newId)
   }
 }, { immediate: true })
-
 
 onMounted(() => {
   if (actualRouteId.value && !route.value) {
@@ -125,6 +117,15 @@ onMounted(() => {
 
 const showModal = () => {
   open.value = true
+}
+
+const showBookingModal = () => {
+  bookingModalVisible.value = true
+}
+
+const handleBooking = (event: any) => {
+  console.log('Бронирование события:', event)
+  bookingModalVisible.value = false
 }
 
 const activeTab = ref('about')
@@ -175,13 +176,11 @@ const openImageModal = (images: string[], startIndex: number = 0) => {
 }
 
 const handleBeforeUpload = (file: File) => {
-
   const isImage = file.type.startsWith('image/')
   if (!isImage) {
     alert('Можно загружать только изображения!')
     return false
   }
-
 
   const isLt5M = file.size / 1024 / 1024 < 10
   if (!isLt5M) {
@@ -211,7 +210,6 @@ const onFinish = async () => {
   try {
     isSubmitting.value = true
 
-
     const routeId = actualRouteId.value
 
     if (!routeId) {
@@ -231,9 +229,7 @@ const onFinish = async () => {
 
     await loadRoute(actualRouteId.value)
 
-
     emit('create-object', response.data.data)
-
 
     open.value = false
     formState.value = {
@@ -291,51 +287,60 @@ const onFinishFailed = (errorInfo: any) => {
         </div>
 
         <div class="mt-5">
-
-          
           <div v-if="activeTab === 'about'">
-
             <p class="text-white" style="margin: 10px">{{ route.description }}</p>
 
             <div class="info-block">
               <dl class="text-white">
-
-
                 <template v-if="route.info_items && Object.keys(route.info_items).length >= 0">
                   <template v-for="(infoItem, key) in route.info_items" :key="key">
-                    <dt style="display: flex; align-items: center; gap: 8px;"><img
-                        :src="0 ? 'Аудитория.svg' : 'Аудитория.svg'" /><strong>Целевая аудитория:</strong> {{
-                          route.audience }} лет</dt>
-                    <dt style="display: flex;  gap: 6px;"><img
-                        :src="0 ? 'Программа обслуживания и посещения.svg' : 'Программа обслуживания и посещения.svg'" /><strong>Программа
-                        обслуживания и посещения:</strong>   </dt>
-                  <dd style="gap: 8px;">{{ infoItem.value }}</dd>
-                    <dt style="display: flex; align-items: center; gap: 8px;"><img
-                        :src="0 ? 'Продолжительность.svg' : 'Продолжительность.svg'" /><strong>Продолжительность:</strong>
-                      {{ formattedDuration }}</dt>
-                    <dt style="display: flex; align-items: center; gap: 8px;"><img
-                        :src="0 ? 'Протяженность.svg' : 'Протяженность.svg'" /><strong>Протяженность:</strong> {{
-                      route.distance }} км</dt>
-                    <dt style="display: flex; align-items: center; gap: 8px;"><img
-                        :src="0 ? 'Кол-во участников.svg' : 'Кол-во участников.svg'" /><strong>Кол-во
-                        участников:</strong> до {{ route.participants }} чел</dt>
+                    <dt style="display: flex; align-items: center; gap: 8px;">
+                      <img :src="0 ? 'Аудитория.svg' : 'Аудитория.svg'" />
+                      <strong>Целевая аудитория:</strong> {{ route.audience }} лет
+                    </dt>
+                    <dt style="display: flex; gap: 6px;">
+                      <img :src="0 ? 'Программа обслуживания и посещения.svg' : 'Программа обслуживания и посещения.svg'" />
+                      <strong>Программа обслуживания и посещения:</strong>
+                    </dt>
+                    <dd style="gap: 8px;">{{ infoItem.value }}</dd>
+                    <dt style="display: flex; align-items: center; gap: 8px;">
+                      <img :src="0 ? 'Продолжительность.svg' : 'Продолжительность.svg'" />
+                      <strong>Продолжительность:</strong> {{ formattedDuration }}
+                    </dt>
+                    <dt style="display: flex; align-items: center; gap: 8px;">
+                      <img :src="0 ? 'Протяженность.svg' : 'Протяженность.svg'" />
+                      <strong>Протяженность:</strong> {{ route.distance }} км
+                    </dt>
+                    <dt style="display: flex; align-items: center; gap: 8px;">
+                      <img :src="0 ? 'Кол-во участников.svg' : 'Кол-во участников.svg'" />
+                      <strong>Кол-во участников:</strong> до {{ route.participants }} чел
+                    </dt>
                   </template>
                 </template>
               </dl>
+
+              <a-button 
+                type="primary" 
+                size="large" 
+                block
+                class="booking-route-button"
+                @click="showBookingModal"
+              >
+                <CalendarOutlined />
+                Забронировать маршрут
+              </a-button>
             </div>
           </div>
-
 
           <div v-if="activeTab === 'objects'" class="objects-tab">
             <h2 class="text-white mb-4">Точки маршрута</h2>
 
             <div v-if="route.point && route.point.length > 0" class="timeline-container">
-              <div class="timeline-item" v-for="(point, index) in route.point" :key="index"  style="align-items: center; display: flex;">
+              <div class="timeline-item" v-for="(point, index) in route.point" :key="index" style="align-items: center; display: flex;">
                 <div class="timeline-number">{{ index + 1 }}</div>
 
-                <div class="timeline-text" >
+                <div class="timeline-text">
                   <p style="margin-top: 0.25rem;">{{ point.name }}</p>
-             
                 </div>
 
                 <div @click="navigateToPage(point)" class="info-icon" title="Подробнее">
@@ -352,7 +357,7 @@ const onFinishFailed = (errorInfo: any) => {
               Нет точек маршрута
             </div>
 
-            <a-button type="primary" @click="showModal" style="margin: 10px">
+            <a-button v-if="isAuthenticated" type="primary" @click="showModal" style="margin: 10px">
               Добавить объект
             </a-button>
 
@@ -423,7 +428,6 @@ const onFinishFailed = (errorInfo: any) => {
               </a-form>
             </a-modal>
 
-           
             <a-modal v-model:open="imageModalVisible" :footer="null" width="80%" style="max-width: 1000px;">
               <div class="image-viewer">
                 <img v-if="currentImages[currentImageIndex]" :src="currentImages[currentImageIndex]"
@@ -451,6 +455,13 @@ const onFinishFailed = (errorInfo: any) => {
     <div v-else class="text-white text-center py-8">
       Маршрут не найден
     </div>
+
+    <BookingCalendar 
+      v-model:visible="bookingModalVisible"
+      :route-id="actualRouteId"
+      :route-title="route?.title || ''"
+      @book="handleBooking"
+    />
   </div>
 </template>
 
@@ -761,5 +772,19 @@ const onFinishFailed = (errorInfo: any) => {
   color: #666;
   min-width: 80px;
   text-align: center;
+}
+.booking-route-button {
+  margin-top: 24px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 600;
+  background-color: #FFB800;
+  border-color: #FFB800;
+  color: #32368E;
+}
+
+.booking-route-button:hover {
+  background-color: #ffa500;
+  border-color: #ffa500;
 }
 </style>

@@ -76,7 +76,7 @@ export default {
         }
 
 
-        const response = await axios.post('/routes/filter', cleanFilters);
+        const response = await axios.post('api/routes/filter', cleanFilters);
 
         if (response.data.success) {
 
@@ -108,7 +108,7 @@ export default {
 
     async loadAllRoutes() {
       try {
-        const response = await axios.post('/routes/filter', {});
+        const response = await axios.post('api/routes/filter', {});
         if (response.data.success) {
           this.$emit('filtered', response.data.routes);
         }

@@ -7,8 +7,7 @@
       <span v-if="reviewsCount > 0" class="reviews-count">{{ reviewsCount }}</span>
     </button>
 
-
-    <div v-if="showReviewsModal" class="modal-overlay" @click.self="showReviewsModal = false">
+        <div v-if="showReviewsModal" class="modal-overlay" @click.self="showReviewsModal = false">
       <div class="modal-content">
        
         <div class="modal-header">
@@ -26,7 +25,7 @@
             <div class="reviews-total">{{ reviewsCount }} отзывов</div>
           </div>
         </div>
-
+        
        
         <div v-if="isLoggedIn && !userHasReviewed" class="add-review-form">
           <h3>Оставить отзыв</h3>

@@ -7,13 +7,18 @@ use App\Http\Controllers\FilterController;
 use App\Http\Controllers\PointController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ScoreController;
-
+use App\Http\Controllers\RouteOrderController;
 Route::get('/', function () {
     return view('vue');
 });
 
 Route::prefix('api')->group(function () {
+Route::get('/routes/{routeId}/events', [RouteOrderController::class, 'getEventsByRoute']);
 
+
+Route::get('/events/{eventId}', [RouteOrderController::class, 'getEvent']);
+
+Route::post('/bookings', [RouteOrderController::class, 'createBooking']);
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/routes/{id}/reviews', [ScoreController::class, 'index']);

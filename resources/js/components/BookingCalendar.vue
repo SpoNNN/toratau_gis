@@ -1,4 +1,3 @@
-<!-- BookingCalendar.vue -->
 <template>
   <a-modal
     :open="visible"
@@ -8,90 +7,92 @@
     :centered="true"
     @cancel="handleClose"
   >
-    <div class="booking-calendar">
-      <div class="calendar-container">
-        <div class="calendar-header">
-          <a-button @click="previousMonth" type="text" class="nav-button">
-            <LeftOutlined />
-          </a-button>
-          <h2 class="current-month">{{ currentMonthName }} {{ currentYear }}</h2>
-          <a-button @click="nextMonth" type="text" class="nav-button">
-            <RightOutlined />
-          </a-button>
-        </div>
-
-        <div class="calendar-grid">
-          <div class="weekday-header" v-for="day in weekdays" :key="day">
-            {{ day }}
-          </div>
-
-          <div
-            v-for="(day, index) in calendarDays"
-            :key="index"
-            class="calendar-day"
-            :class="{
-              'other-month': !day.isCurrentMonth,
-              'today': day.isToday,
-              'selected': day.isSelected,
-              'has-event': day.hasEvent
-            }"
-            @click="selectDate(day)"
-          >
-            <span class="day-number">{{ day.day }}</span>
-            <div v-if="day.hasEvent" class="event-indicator"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="event-details" v-if="selectedEvent">
-        <div class="event-card">
-          <div class="event-date">
-            <div class="event-day">{{ selectedEvent.dayNumber }}</div>
-            <div class="event-month">{{ selectedEvent.monthName }}</div>
-            <div class="event-weekday">{{ selectedEvent.weekday }}</div>
-          </div>
-
-          <div class="event-info">
-            <h3 class="event-title">{{ selectedEvent.title }}</h3>
-            
-            <div class="event-time">
-              <div class="time-label">Начало</div>
-              <div class="time-value">{{ selectedEvent.startTime }}</div>
-            </div>
-
-            <div class="event-capacity">
-              <div class="capacity-label">Количество мест:</div>
-              <div class="capacity-value">{{ selectedEvent.bookedSeats }}/{{ selectedEvent.totalSeats }}</div>
-            </div>
-
-            <div class="event-location">
-              <EnvironmentOutlined />
-              <span>{{ selectedEvent.location }}</span>
-            </div>
-
-            <div class="event-description">
-              {{ selectedEvent.description }}
-            </div>
-
-            <a-button 
-              type="primary" 
-              size="large" 
-              block
-              class="booking-button"
-              :disabled="selectedEvent.bookedSeats >= selectedEvent.totalSeats"
-              @click="showBookingForm"
-            >
-              {{ selectedEvent.bookedSeats >= selectedEvent.totalSeats ? 'Мест нет' : 'Записаться' }}
+    <a-spin :spinning="isLoading">
+      <div class="booking-calendar">
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <a-button @click="previousMonth" type="text" class="nav-button">
+              <LeftOutlined />
+            </a-button>
+            <h2 class="current-month">{{ currentMonthName }} {{ currentYear }}</h2>
+            <a-button @click="nextMonth" type="text" class="nav-button">
+              <RightOutlined />
             </a-button>
           </div>
+
+          <div class="calendar-grid">
+            <div class="weekday-header" v-for="day in weekdays" :key="day">
+              {{ day }}
+            </div>
+
+            <div
+              v-for="(day, index) in calendarDays"
+              :key="index"
+              class="calendar-day"
+              :class="{
+                'other-month': !day.isCurrentMonth,
+                'today': day.isToday,
+                'selected': day.isSelected,
+                'has-event': day.hasEvent
+              }"
+              @click="selectDate(day)"
+            >
+              <span class="day-number">{{ day.day }}</span>
+              <div v-if="day.hasEvent" class="event-indicator"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="event-details" v-if="selectedEvent">
+          <div class="event-card">
+            <div class="event-date">
+              <div class="event-day">{{ selectedEvent.dayNumber }}</div>
+              <div class="event-month">{{ selectedEvent.monthName }}</div>
+              <div class="event-weekday">{{ selectedEvent.weekday }}</div>
+            </div>
+
+            <div class="event-info">
+              <h3 class="event-title">{{ selectedEvent.title }}</h3>
+              
+              <div class="event-time">
+                <div class="time-label">Начало</div>
+                <div class="time-value">{{ selectedEvent.startTime }}</div>
+              </div>
+
+              <div class="event-capacity">
+                <div class="capacity-label">Количество мест:</div>
+                <div class="capacity-value">{{ selectedEvent.bookedSeats }}/{{ selectedEvent.totalSeats }}</div>
+              </div>
+
+              <div class="event-location">
+                <EnvironmentOutlined />
+                <span>{{ selectedEvent.location }}</span>
+              </div>
+
+              <div class="event-description">
+                {{ selectedEvent.description }}
+              </div>
+
+              <a-button 
+                type="primary" 
+                size="large" 
+                block
+                class="booking-button"
+                :disabled="selectedEvent.bookedSeats >= selectedEvent.totalSeats"
+                @click="showBookingForm"
+              >
+                {{ selectedEvent.bookedSeats >= selectedEvent.totalSeats ? 'Мест нет' : 'Записаться' }}
+              </a-button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="no-event-selected">
+          <CalendarOutlined style="font-size: 48px; color: #d9d9d9; margin-bottom: 16px;" />
+          <p>Выберите дату с событием</p>
         </div>
       </div>
-
-      <div v-else class="no-event-selected">
-        <CalendarOutlined style="font-size: 48px; color: #d9d9d9; margin-bottom: 16px;" />
-        <p>Выберите дату с событием</p>
-      </div>
-    </div>
+    </a-spin>
   </a-modal>
 
   <a-modal
@@ -102,8 +103,6 @@
     @cancel="closeBookingForm"
   >
     <div class="booking-form-container">
-    
-      
       <h2 class="form-title">Зарегистрироваться на научно-образовательный маршрут</h2>
 
       <a-form
@@ -223,10 +222,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { LeftOutlined, RightOutlined, EnvironmentOutlined, CalendarOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ru'
+import axios from 'axios'
 
 dayjs.locale('ru')
 
@@ -265,12 +266,14 @@ const props = defineProps<{
   routeTitle: string
 }>()
 
-const emit = defineEmits(['update:visible', 'book'])
+const emit = defineEmits(['update:visible', 'book', 'booking-success'])
 
 const currentDate = ref(dayjs())
 const selectedDate = ref<string | null>(null)
 const bookingFormVisible = ref(false)
 const isSubmitting = ref(false)
+const isLoading = ref(false)
+const events = ref<Event[]>([])
 
 const formState = ref<BookingFormState>({
   firstName: '',
@@ -279,97 +282,6 @@ const formState = ref<BookingFormState>({
   phone: '',
   email: ''
 })
-
-const events = ref<Event[]>([
-  {
-    id: 1,
-    date: '2026-02-15',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '10:00',
-    bookedSeats: 8,
-    totalSeats: 15,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  },
-  {
-    id: 2,
-    date: '2026-02-18',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '12:00',
-    bookedSeats: 15,
-    totalSeats: 15,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  },
-  {
-    id: 3,
-    date: '2026-02-22',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '14:00',
-    bookedSeats: 3,
-    totalSeats: 20,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  },
-  {
-    id: 4,
-    date: '2026-02-25',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '11:00',
-    bookedSeats: 0,
-    totalSeats: 15,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  },
-  {
-    id: 5,
-    date: '2026-03-05',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '10:30',
-    bookedSeats: 12,
-    totalSeats: 15,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  },
-  {
-    id: 6,
-    date: '2026-03-12',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '13:00',
-    bookedSeats: 5,
-    totalSeats: 18,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  },
-  {
-    id: 7,
-    date: '2026-03-20',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '12:00',
-    bookedSeats: 10,
-    totalSeats: 15,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  },
-  {
-    id: 8,
-    date: '2026-03-28',
-    title: 'Маршрут: Пифагор, IT-Уфа',
-    startTime: '15:00',
-    bookedSeats: 1,
-    totalSeats: 12,
-    location: 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2',
-    description: 'Кампус Евразийского МОЦ#6',
-    routeId: 1
-  }
-])
 
 const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
@@ -380,6 +292,29 @@ const monthNames = [
 
 const currentMonthName = computed(() => monthNames[currentDate.value.month()])
 const currentYear = computed(() => currentDate.value.year())
+
+/**
+ * Загрузка событий из API
+ */
+const loadEvents = async () => {
+  if (!props.routeId) return
+
+  try {
+    isLoading.value = true
+    const response = await axios.get(`/api/routes/${props.routeId}/events`)
+    
+    if (response.data.success) {
+      events.value = response.data.data
+    } else {
+      message.error('Ошибка загрузки событий')
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки событий:', error)
+    message.error('Не удалось загрузить события')
+  } finally {
+    isLoading.value = false
+  }
+}
 
 const calendarDays = computed(() => {
   const days: CalendarDay[] = []
@@ -496,36 +431,65 @@ const onSubmitBooking = async () => {
     isSubmitting.value = true
 
     const bookingData = {
-      ...formState.value,
       eventId: selectedEvent.value.id,
+      firstName: formState.value.firstName,
+      lastName: formState.value.lastName,
+      seats: formState.value.seats,
+      phone: formState.value.phone,
+      email: formState.value.email,
       eventDate: selectedEvent.value.date,
       routeId: props.routeId
     }
 
-    console.log('Booking data:', bookingData)
+    const response = await axios.post('/api/bookings', bookingData)
 
-    emit('book', bookingData)
+    if (response.data.success) {
+      message.success('Бронирование успешно создано!')
+      
+    
+      const eventIndex = events.value.findIndex(e => e.id === selectedEvent.value!.id)
+      if (eventIndex !== -1) {
+        events.value[eventIndex].bookedSeats = response.data.data.bookedSeats
+      }
 
-    closeBookingForm()
-    handleClose()
+      emit('booking-success', response.data.data)
+      emit('book', bookingData)
 
-  } catch (error) {
+      closeBookingForm()
+      handleClose()
+    } else {
+      message.error(response.data.message || 'Ошибка при создании бронирования')
+    }
+
+  } catch (error: any) {
     console.error('Ошибка бронирования:', error)
+    
+    if (error.response?.data?.message) {
+      message.error(error.response.data.message)
+    } else if (error.response?.data?.errors) {
+      const errors = Object.values(error.response.data.errors).flat()
+      message.error(errors[0] as string || 'Ошибка валидации')
+    } else {
+      message.error('Произошла ошибка при бронировании')
+    }
   } finally {
     isSubmitting.value = false
   }
 }
 
+
 watch(() => props.visible, (newVal) => {
   if (newVal) {
     currentDate.value = dayjs()
     selectedDate.value = null
+    loadEvents()
   }
 })
 
-onMounted(() => {
-  console.log('Events loaded:', events.value)
-  console.log('Current routeId:', props.routeId)
+watch(() => props.routeId, (newVal) => {
+  if (newVal && props.visible) {
+    loadEvents()
+  }
 })
 </script>
 
@@ -612,7 +576,7 @@ onMounted(() => {
 
 .calendar-day.selected.has-event {
   background-color: #1890ff;
-    border-radius: 35px;
+  border-radius: 35px;
 }
 
 .day-number {
@@ -761,28 +725,6 @@ onMounted(() => {
 .booking-form-container {
   position: relative;
   padding: 20px 0;
-}
-
-.close-form-btn {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background: #ff4d4f;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  width: 32px;
-  height: 32px;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
-.close-form-btn:hover {
-  background: #ff7875;
 }
 
 .form-title {

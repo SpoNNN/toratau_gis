@@ -183,7 +183,7 @@ export default {
 
         const routeStyle = new Style({
           stroke: new Stroke({
-            color: 'rgba(255, 0, 0, 0.8)',
+            color: '#FFB800',
             width: 5,
           }),
         });
@@ -435,13 +435,19 @@ export default {
     const loadMap = () => {
       clearLayers();
 
+      // Если есть точки для отрисовки, отрисовываем только их без маршрутов
+      if (props.points && props.points.length > 0) {
+        showAllRoutes.value = false;
+        loadPoints();
+        return;
+      }
+
+      // Если точек нет, отрисовываем маршруты
       if (props.routeSlug) {
         showAllRoutes.value = false;
         const routeConfig = routesConfig.find(r => r.slug === props.routeSlug);
         if (routeConfig) {
-          loadRoute(routeConfig, true).then(() => {
-            loadPoints();
-          });
+          loadRoute(routeConfig, true);
         }
       } else {
         showAllRoutes.value = true;
@@ -449,7 +455,6 @@ export default {
           for (const routeConfig of routesConfig) {
             await loadRoute(routeConfig, false);
           }
-          loadPoints();
         };
         loadRoutesSequentially();
       }

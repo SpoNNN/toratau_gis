@@ -258,12 +258,14 @@ interface BookingFormState {
   seats: number
   phone: string
   email: string
+  userId: number
 }
 
 const props = defineProps<{
   visible: boolean
   routeId: number
   routeTitle: string
+  userId: number  
 }>()
 
 const emit = defineEmits(['update:visible', 'book', 'booking-success'])
@@ -280,7 +282,8 @@ const formState = ref<BookingFormState>({
   lastName: '',
   seats: 1,
   phone: '',
-  email: ''
+  email: '',
+  userId: 0  
 })
 
 const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
@@ -293,9 +296,6 @@ const monthNames = [
 const currentMonthName = computed(() => monthNames[currentDate.value.month()])
 const currentYear = computed(() => currentDate.value.year())
 
-/**
- * Загрузка событий из API
- */
 const loadEvents = async () => {
   if (!props.routeId) return
 
@@ -420,7 +420,8 @@ const closeBookingForm = () => {
     lastName: '',
     seats: 1,
     phone: '',
-    email: ''
+    email: '',
+    userId: props.userId
   }
 }
 
@@ -437,6 +438,7 @@ const onSubmitBooking = async () => {
       seats: formState.value.seats,
       phone: formState.value.phone,
       email: formState.value.email,
+      userId: props.userId,   
       eventDate: selectedEvent.value.date,
       routeId: props.routeId
     }
@@ -446,7 +448,7 @@ const onSubmitBooking = async () => {
     if (response.data.success) {
       message.success('Бронирование успешно создано!')
       
-    
+     
       const eventIndex = events.value.findIndex(e => e.id === selectedEvent.value!.id)
       if (eventIndex !== -1) {
         events.value[eventIndex].bookedSeats = response.data.data.bookedSeats

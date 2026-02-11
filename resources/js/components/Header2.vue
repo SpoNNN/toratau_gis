@@ -17,6 +17,7 @@
             Профиль
           </span>
         </li>
+        
         <li v-if="!isLoggedIn">
           <span class="text-white cursor-pointer hover:underline" @click="$emit('navigateToRegister')">
             Создать аккаунт

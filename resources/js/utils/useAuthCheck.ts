@@ -3,11 +3,17 @@ import axios from 'axios'
 
 const isAuthenticated = ref(false)
 const isChecking = ref(false)
+const currentUser = ref<{
+  id: number
+  name: string
+  email: string
+} | null>(null)
 
 export function useAuthCheck() {
   const checkAuth = async () => {
     if (typeof window === 'undefined') {
       isAuthenticated.value = false
+      currentUser.value = null
       return false
     }
     
@@ -17,6 +23,7 @@ export function useAuthCheck() {
     if (!token) {
       console.log('useAuthCheck - токен отсутствует')
       isAuthenticated.value = false
+      currentUser.value = null
       return false
     }
 
@@ -28,13 +35,24 @@ export function useAuthCheck() {
       const response = await axios.get('/api/user')
       console.log('useAuthCheck - ответ получен:', response.data)
       
+      // Сохраняем данные пользователя
+      currentUser.value = {
+        id: response.data.id,
+        name: response.data.name,
+        email: response.data.email
+      }
+      
+      // Также сохраняем в localStorage
+      localStorage.setItem('user', JSON.stringify(currentUser.value))
+      
       isAuthenticated.value = true
-      console.log('useAuthCheck - ✅ авторизован')
+      console.log('useAuthCheck - ✅ авторизован, userId:', currentUser.value.id)
       return true
       
     } catch (error: any) {
       console.error('useAuthCheck - ❌ ошибка:', error.response?.status)
       isAuthenticated.value = false
+      currentUser.value = null
       
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         console.log('useAuthCheck - токен невалидный, очищаем')
@@ -49,10 +67,10 @@ export function useAuthCheck() {
     }
   }
 
-
   const checkToken = () => {
     if (typeof window === 'undefined') {
       isAuthenticated.value = false
+      currentUser.value = null
       return false
     }
     
@@ -64,23 +82,51 @@ export function useAuthCheck() {
     
     if (hasToken) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      
+      // Пытаемся загрузить пользователя из localStorage
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        try {
+          currentUser.value = JSON.parse(savedUser)
+          console.log('useAuthCheck - пользователь загружен из localStorage, userId:', currentUser.value?.id)
+        } catch (e) {
+          console.error('useAuthCheck - ошибка парсинга user из localStorage')
+        }
+      }
+    } else {
+      currentUser.value = null
     }
     
     return hasToken
   }
 
-
   const setAuthenticated = (value: boolean) => {
     console.log('useAuthCheck - setAuthenticated:', value)
     isAuthenticated.value = value
+    
+    if (!value) {
+      currentUser.value = null
+      localStorage.removeItem('user')
+    }
   }
 
+  const logout = () => {
+    console.log('useAuthCheck - logout')
+    isAuthenticated.value = false
+    currentUser.value = null
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('user')
+    delete axios.defaults.headers.common['Authorization']
+  }
 
   return {
     isAuthenticated: computed(() => isAuthenticated.value),
     isChecking: computed(() => isChecking.value),
+    currentUser: computed(() => currentUser.value),
+    userId: computed(() => currentUser.value?.id || 0),
     checkAuth,
     checkToken,
-    setAuthenticated
+    setAuthenticated,
+    logout
   }
 }

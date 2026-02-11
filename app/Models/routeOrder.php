@@ -14,14 +14,14 @@ class routeOrder extends Model
     protected $fillable = [
         'route_id',
         'max_users',
-        'booked_users',
+        'ordered_users',
         'date',
     ];
 
     protected $casts = [
         'date' => 'datetime',
         'max_users' => 'integer',
-        'booked_users' => 'integer',
+        'ordered_users' => 'integer',
     ];
 
 

@@ -13,12 +13,21 @@ Route::get('/', function () {
 });
 
 Route::prefix('api')->group(function () {
-Route::get('/routes/{routeId}/events', [RouteOrderController::class, 'getEventsByRoute']);
+    Route::get('/routes/{routeId}/events', [RouteOrderController::class, 'getEventsByRoute']);
 
+    Route::get('/user/{userId}/bookings', [RouteOrderController::class, 'getUserBookings']);
 
-Route::get('/events/{eventId}', [RouteOrderController::class, 'getEvent']);
+    Route::post('/bookings', [RouteOrderController::class, 'createBooking']);
 
-Route::post('/bookings', [RouteOrderController::class, 'createBooking']);
+    // Получить все бронирования для события (для админки)
+    Route::get('/events/{eventId}/bookings', [RouteOrderController::class, 'getEventBookings']);
+
+    // Отменить бронирование (для админки)
+    Route::delete('/bookings/{bookingId}', [RouteOrderController::class, 'cancelBooking']);
+
+    Route::get('/events/{eventId}', [RouteOrderController::class, 'getEvent']);
+
+    Route::post('/bookings', [RouteOrderController::class, 'createBooking']);
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/routes/{id}/reviews', [ScoreController::class, 'index']);

@@ -7,6 +7,7 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { InfoCircleOutlined, PlusOutlined, CalendarOutlined } from '@ant-design/icons-vue'
 
+const { userId } = useAuthCheck()
 const open = ref<boolean>(false)
 const bookingModalVisible = ref<boolean>(false)
 const isLoading = ref<boolean>(false)
@@ -458,6 +459,7 @@ const onFinishFailed = (errorInfo: any) => {
 
     <BookingCalendar 
       v-model:visible="bookingModalVisible"
+      :userId="userId"
       :route-id="actualRouteId"
       :route-title="route?.title || ''"
       @book="handleBooking"

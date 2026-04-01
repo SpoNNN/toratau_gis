@@ -50,6 +50,7 @@ const route = ref<Route | null>(null)
 const props = defineProps<{
   routeId?: number
   route?: Route
+  isAdmin: boolean
 }>()
 
 const emit = defineEmits(['select-object', 'navigate', 'create-object'])
@@ -95,13 +96,9 @@ const loadRoute = async (id: number) => {
 const formattedDuration = computed(() => {
   if (!route.value?.duration) return '0 мин'
 
-  const hours = Math.floor(route.value.duration / 60)
-  const minutes = route.value.duration % 60
+  const hours = route.value.duration 
 
-  if (hours === 0) return `${minutes} мин`
-  if (minutes === 0) return `${hours} ч`
-
-  return `${hours} ч ${minutes} мин`
+  return `${hours} ч `
 })
 
 watch(actualRouteId, (newId) => {
@@ -358,7 +355,7 @@ const onFinishFailed = (errorInfo: any) => {
               Нет точек маршрута
             </div>
 
-            <a-button v-if="isAuthenticated" type="primary" @click="showModal" style="margin: 10px">
+            <a-button v-if="isAuthenticated && isAdmin" type="primary" @click="showModal" style="margin: 10px">
               Добавить объект
             </a-button>
 

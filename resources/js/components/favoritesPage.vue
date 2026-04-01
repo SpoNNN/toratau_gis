@@ -20,7 +20,7 @@ const auth = getAuth(app);
 
 
 const props = defineProps({
-  routes: Array // Принимаем маршруты из app2.vue
+  routes: Array 
 });
 
 const emit = defineEmits(['navigate']);
@@ -40,12 +40,12 @@ onMounted(async () => {
 
     if (userDoc.exists()) {
       const savedFavorites = userDoc.data().favorites || [];
-      // Фильтрация пустых или некорректных записей
+    
       favorites.value = savedFavorites.filter(fav => fav?.title);
     }
   } else {
     const savedFavorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-    // Убедимся, что данные имеют правильную структуру
+  
     favorites.value = savedFavorites.filter(fav => fav?.title);
   }
 });

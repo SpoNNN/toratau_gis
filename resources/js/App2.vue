@@ -1,6 +1,13 @@
 <template>
+  <AdminModal 
+    :routes="Object.values(routesData)"
+  :visible="adminModalVisible"
+  @update:visible="adminModalVisible = $event"
+/>
   <Header2
-    :isLoggedIn="isLoggedIn"
+    :isLoggedIn="isAuthenticated"
+    :isAdmin="isAdmin"
+      @openAdminModal="adminModalVisible = true"
     @navigateToWay="
       () => {
         currentPage = 'way'
@@ -37,6 +44,7 @@
       <RouteDetails 
         v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
         :route-id="selectedRouteId"  
+        :isAdmin="isAdmin"
         @select-object="(point) => updateClick(point)"
         @navigate="(point) => {
           isPathObjectOpened = true
@@ -72,7 +80,7 @@
       <ReviewsComponent 
         v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 
         :route-id="selectedRouteId"
-        :is-logged-in="isLoggedIn"   
+        :is-logged-in="isAuthenticated"   
       />
 
       <selectedObject
@@ -109,7 +117,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import axios from 'axios'
-
+import AdminModal from './components/AdminModal.vue'
 import Header2 from './components/Header2.vue'
 import selectedObject from './components/selectedObject.vue'
 import way from './components/way.vue'
@@ -119,11 +127,19 @@ import signIn from './views/signIn.vue'
 import RouteDetails from './components/RouteDetails.vue'
 import favoritesPage from './components/favoritesPage.vue'
 import ReviewsComponent from './components/ReviewsComponent.vue'
-
+import { useAuthCheck } from './utils/useAuthCheck'
+const adminModalVisible = ref(false)
+// Используем composable правильно
+const { 
+  isAuthenticated, 
+  isAdmin, 
+  checkToken, 
+  logout,
+  checkAuth 
+} = useAuthCheck()
 const API_BASE_URL = '/api'
 const routesData = ref({})
 const currentPage = ref('way')
-const isLoggedIn = ref(false)
 const isLoading = ref(true)
 const error = ref(null)
 const currentPointData = ref(null)
@@ -209,7 +225,6 @@ const handleSelectRoute = (routeId) => {
 
 const handleCreateObject = async (object) => {
   console.log('Создан объект:', object)
-  // Перезагружаем данные маршрута
   await fetchRoutes()
 }
 
@@ -239,21 +254,20 @@ const handleSignOut = async () => {
   } catch (error) {
     console.error('Logout error:', error)
   } finally {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user')
-    delete axios.defaults.headers.common['Authorization']
-    isLoggedIn.value = false
+    logout() // Используем logout из useAuthCheck
     currentPage.value = 'way'
   }
 }
 
-const handleLoggedIn = (user) => {
-  isLoggedIn.value = true
+const handleLoggedIn = async (user) => {
+  // После успешного входа проверяем авторизацию заново
+  await checkAuth()
   currentPage.value = 'way'
 }
 
-const handleRegistered = (user) => {
-  isLoggedIn.value = true
+const handleRegistered = async (user) => {
+  // После успешной регистрации проверяем авторизацию заново
+  await checkAuth()
   currentPage.value = 'way'
 }
 
@@ -286,17 +300,15 @@ const currentRoutePoints = computed(() => {
   return currentRouteData.value?.points || []
 })
 
-onMounted(() => {
-  fetchRoutes()
- 
-  const token = localStorage.getItem('auth_token')
-  console.log('App.vue onMounted - token:', token)
+onMounted(async () => {
+  await fetchRoutes()
   
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    isLoggedIn.value = true
-  } else {
-    isLoggedIn.value = false
+  // Проверяем токен и загружаем данные пользователя
+  const hasToken = checkToken()
+  
+  if (hasToken) {
+    // Проверяем валидность токена и загружаем данные пользователя
+    await checkAuth()
   }
 })
 </script>

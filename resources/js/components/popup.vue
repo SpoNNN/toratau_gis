@@ -47,9 +47,9 @@
       const popupText = ref('Точка на карте');
       const popupPosition = ref({ x: 0, y: 0 });
       const popupOffset = ref({ x: 0, y: 0 });
-      const popupAddress = ref(""); // Хранит адрес для текущей точки
+      const popupAddress = ref(""); 
       const popupUrl = ref("");
-      const selectedFeature = ref(null); // Храним выделенную точку
+      const selectedFeature = ref(null); 
 
       const defaultPointStyle = new Style({
         image: new Circle({
@@ -83,7 +83,7 @@
           }),
         });
   
-        // === Слой маршрута ===
+ 
         const routeSource = new VectorSource();
         fetch('./ors__v2_directions_{profile}_geojson_post_1733420735317.geojson')
           .then((response) => response.json())
@@ -111,7 +111,7 @@
   
         map.addLayer(routeLayer);
   
-        // === Слой точек ===
+
         const pointSource = new VectorSource();
         const coordinates = [
           [55.936081, 54.720401, "Кампус Евразийского НОЦ РБ", "ул. Заки Валиди, 32/2", "https://campus.nocrb.ru/"],

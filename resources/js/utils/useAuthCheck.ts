@@ -3,10 +3,12 @@ import axios from 'axios'
 
 const isAuthenticated = ref(false)
 const isChecking = ref(false)
+const isAdmin = ref(false)
 const currentUser = ref<{
   id: number
   name: string
   email: string
+  is_admin: boolean
 } | null>(null)
 
 export function useAuthCheck() {
@@ -39,14 +41,16 @@ export function useAuthCheck() {
       currentUser.value = {
         id: response.data.id,
         name: response.data.name,
-        email: response.data.email
+        email: response.data.email,
+        is_admin: response.data.is_admin
       }
-      
+      console.log('test', currentUser.value.is_admin)
       // Также сохраняем в localStorage
       localStorage.setItem('user', JSON.stringify(currentUser.value))
       
       isAuthenticated.value = true
-      console.log('useAuthCheck - ✅ авторизован, userId:', currentUser.value.id)
+          isAdmin.value = currentUser.value.is_admin
+      console.log('useAuthCheck - ✅ авторизован, userId:', currentUser.value.id, isAdmin.value)
       return true
       
     } catch (error: any) {
@@ -88,7 +92,9 @@ export function useAuthCheck() {
       if (savedUser) {
         try {
           currentUser.value = JSON.parse(savedUser)
+           
           console.log('useAuthCheck - пользователь загружен из localStorage, userId:', currentUser.value?.id)
+          
         } catch (e) {
           console.error('useAuthCheck - ошибка парсинга user из localStorage')
         }
@@ -124,9 +130,11 @@ export function useAuthCheck() {
     isChecking: computed(() => isChecking.value),
     currentUser: computed(() => currentUser.value),
     userId: computed(() => currentUser.value?.id || 0),
+      isAdmin: computed(() => isAdmin.value),
     checkAuth,
     checkToken,
     setAuthenticated,
     logout
+    
   }
 }

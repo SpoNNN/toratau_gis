@@ -8,10 +8,15 @@ use App\Http\Controllers\PointController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ScoreController;
 use App\Http\Controllers\RouteOrderController;
+use App\Http\Controllers\AdminController;
+
 Route::get('/', function () {
     return view('vue');
 });
-
+Route::prefix('api/admin')->group(function () {
+    Route::post('/events', [AdminController::class, 'createEvent']);
+    Route::get('/events', [AdminController::class, 'getEvents']);
+});
 Route::prefix('api')->group(function () {
     Route::get('/routes/{routeId}/events', [RouteOrderController::class, 'getEventsByRoute']);
 

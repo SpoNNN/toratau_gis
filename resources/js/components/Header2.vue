@@ -5,19 +5,24 @@
         <img src="/ноц 1.svg" alt="Logo" class="w-30" />
       </div>
       <ul class="h-full flex space-x-10 items-center">
+        <li v-if="isLoggedIn && isAdmin">
+          <span class="text-white cursor-pointer hover:underline" @click="$emit('openAdminModal')">
+            Админ панель
+          </span>
+        </li>
         <li>
           <span class="text-white cursor-pointer hover:underline" @click="$emit('navigateToWay')">
             Все маршруты
           </span>
         </li>
-     
-      
+
+
         <li v-if="isLoggedIn && !isProfilePage">
           <span class="text-white cursor-pointer hover:underline" @click="navigateToProfile">
             Профиль
           </span>
         </li>
-        
+
         <li v-if="!isLoggedIn">
           <span class="text-white cursor-pointer hover:underline" @click="$emit('navigateToRegister')">
             Создать аккаунт
@@ -29,10 +34,8 @@
           </span>
         </li>
         <li v-if="isLoggedIn">
-          <button style="color: white;"
-            @click="handleLogout" 
-            class="text-white cursor-pointer hover:underline bg-transparent border-none"
-          >
+          <button style="color: white;" @click="handleLogout"
+            class="text-white cursor-pointer hover:underline bg-transparent border-none">
             Выйти
           </button>
         </li>
@@ -45,10 +48,12 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
-const props = defineProps(['isLoggedIn'])
+const props = defineProps(['isLoggedIn', 'isAdmin'])
+console.log('props', props)
 const emit = defineEmits(['logout'])
 const router = useRouter()
 const route = useRoute()
+
 
 const isProfilePage = computed(() => {
   return route.path === '/profile'
@@ -60,7 +65,7 @@ const navigateToProfile = () => {
 
 const handleLogout = async () => {
   emit('logout')
-  
+
 }
 </script>
 

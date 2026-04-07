@@ -19,7 +19,7 @@ class AdminController extends Controller
 {
     $validator = Validator::make($request->all(), [
         'route_id' => 'required|exists:route,id',
-        'max_users' => '15',
+        'max_users' => 'required|integer|min:1',
         'date' => 'required|date|after:now',
     ]);
 

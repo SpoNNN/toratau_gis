@@ -9,6 +9,11 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ScoreController;
 use App\Http\Controllers\RouteOrderController;
 use App\Http\Controllers\AdminController;
+use Illuminate\Http\Request;
+use App\Http\Controllers\ApprovalController;
+Route::get('/test-api', function () {
+    return ['message' => 'API works'];
+});
 
 Route::get('/', function () {
     return view('vue');
@@ -71,3 +76,43 @@ Route::get('/routes/{routeId}/reviews', [ScoreController::class, 'index']);
 Route::get('/profile', function () {
     return view('vue');
 });
+
+Route::prefix('api/admin')->group(function () {
+    Route::post('/approval-requests', [App\Http\Controllers\ApprovalController::class, 'createRequest']);
+    Route::get('/approval-requests', [App\Http\Controllers\ApprovalController::class, 'getRequests']);
+    Route::get('/approval-requests/{id}', [App\Http\Controllers\ApprovalController::class, 'getRequest']);
+    Route::delete('/approval-requests/{id}', [App\Http\Controllers\ApprovalController::class, 'deleteRequest']);
+    Route::post('/approval-requests/{id}/resend', [App\Http\Controllers\ApprovalController::class, 'resendEmails']);
+    // Route::delete('/approval-requests/{id}/cancel', [App\Http\Controllers\ApprovalController::class, 'cancelRequest']); // Временно закомментировано
+});
+
+// Голосование (публичные маршруты)
+Route::get('/vote/{token}', function (Request $request, $token) {
+    $status = $request->query('status');
+
+    if (!in_array($status, ['confirmed', 'rejected'])) {
+        return view('emails.vote_invalid');
+    }
+
+    if ($status === 'rejected') {
+        return view('emails.vote_comment', compact('token'));
+    }
+
+    return app(ApprovalController::class)->vote(
+        Request::create('', 'POST', ['status' => 'confirmed']),
+        $token
+    );
+});
+Route::post('/vote/{token}', [ApprovalController::class, 'vote']);
+
+// Тестовый маршрут
+Route::get('/test-date', function () {
+    return [
+        'server_now' => now()->toDateTimeString(),
+        'server_date' => now()->toDateString(),
+        'timezone' => config('app.timezone'),
+    ];
+});
+
+Route::get('/api/admin/test', [App\Http\Controllers\TestController::class, 'test']);
+

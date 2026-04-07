@@ -1,5 +1,5 @@
 <template>
-  <AdminModal 
+  <AdminApprovalPanel 
     :routes="Object.values(routesData)"
   :visible="adminModalVisible"
   @update:visible="adminModalVisible = $event"
@@ -117,7 +117,7 @@
 <script setup>
 import { ref, onMounted, computed, nextTick } from 'vue'
 import axios from 'axios'
-import AdminModal from './components/AdminModal.vue'
+import AdminApprovalPanel from './components/AdminApprovalPanel.vue'
 import Header2 from './components/Header2.vue'
 import selectedObject from './components/selectedObject.vue'
 import way from './components/way.vue'

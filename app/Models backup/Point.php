@@ -18,9 +18,7 @@ class Point extends Model
         'name',
         'pointName',
         'description',
-        'images',
-        'email',           
-        'duration_minutes' 
+        'images'
     ];
 
     public function route()

@@ -14,7 +14,7 @@ class PointController extends Controller
     public function getRoutes()
     {
         $routes = Route::with(['point', 'RouteInfos'])->get();
-        
+
         return response()->json([
             'success' => true,
             'data' => $routes->map(function ($route) {
@@ -27,7 +27,7 @@ class PointController extends Controller
     {
         $route = Route::with(['point', 'routeInfos'])
             ->findOrFail($id);
-        
+
         return response()->json([
             'success' => true,
             'data' => $this->transformRoute($route)
@@ -36,16 +36,13 @@ class PointController extends Controller
 
     public function addPoint(Request $request, $id)
     {
- 
-
-
         try {
             $route = Route::findOrFail($id);
             $imageUrls = [];
-            
+
             if ($request->has('images')) {
                 $images = json_decode($request->images, true);
-                
+
                 if (is_array($images)) {
                     foreach ($images as $index => $base64Image) {
                         // base64 магия
@@ -54,7 +51,7 @@ class PointController extends Controller
                             $type = strtolower($type[1]);
 
                             $imageData = base64_decode($base64Image);
-                            
+
                             if ($imageData === false) {
                                 continue;
                             }
@@ -106,13 +103,97 @@ class PointController extends Controller
             ], 500);
         }
     }
+    public function updatePoint(Request $request, $routeId, $pointIndex)
+    {
+        $route = Route::with('point')->findOrFail($routeId);
+        $points = $route->point;
+
+        if (!isset($points[$pointIndex])) {
+            return response()->json(['success' => false, 'message' => 'Точка не найдена'], 404);
+        }
+
+        $point = $points[$pointIndex];
+        $imageUrls = [];
+
+        if ($request->has('images')) {
+            $images = json_decode($request->images, true);
+            if (is_array($images)) {
+                foreach ($images as $index => $img) {
+                    if (str_starts_with($img, '/storage/')) {
+                        // уже сохранённая картинка — оставляем как есть
+                        $imageUrls[] = $img;
+                    } elseif (preg_match('/^data:image\/(\w+);base64,/', $img, $type)) {
+                        $base64 = substr($img, strpos($img, ',') + 1);
+                        $ext = strtolower($type[1]);
+                        $data = base64_decode($base64);
+                        $fileName = 'point_' . $route->id . '_' . time() . '_' . $index . '.' . $ext;
+                        Storage::disk('public')->put('points/' . $fileName, $data);
+                        $imageUrls[] = '/storage/points/' . $fileName;
+                    }
+                }
+            }
+        }
+
+        $point->name = $request->name;
+        $point->description = $request->description;
+        $point->address = $request->address;
+        $point->lon = $request->lon;
+        $point->lat = $request->lat;
+        $point->url = $request->url;
+        $point->pointName = $request->point_name ?? null;
+        $point->images = json_encode($imageUrls);
+        $point->save();
+
+        return response()->json(['success' => true, 'message' => 'Точка обновлена']);
+    }
+    public function deletePoint($routeId, $pointIndex)
+    {
+        try {
+            $route = Route::with('point')->findOrFail($routeId);
+
+            $points = $route->point;
+
+            if (!isset($points[$pointIndex])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Точка не найдена'
+                ], 404);
+            }
+
+            $point = $points[$pointIndex];
+
+            $images = json_decode($point->images, true) ?? [];
+            foreach ($images as $imagePath) {
+                $storagePath = str_replace('/storage/', '', $imagePath);
+                Storage::disk('public')->delete($storagePath);
+            }
+
+            $point->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Точка успешно удалена'
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Маршрут не найден'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении точки: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     private function transformRoute(Route $route)
     {
         return [
             'id' => $route->id,
             'title' => $route->title,
-            'map_color' => $route->map_color,
+            'map_color' => $route->mapColor,
             'description' => $route->description,
             'duration' => $route->duration,
             'audience' => $route->audience,

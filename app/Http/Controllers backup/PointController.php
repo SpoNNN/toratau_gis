@@ -112,7 +112,7 @@ class PointController extends Controller
         return [
             'id' => $route->id,
             'title' => $route->title,
-            'map_color' => $route->map_color,
+            'map_color' => $route->mapColor,
             'description' => $route->description,
             'duration' => $route->duration,
             'audience' => $route->audience,

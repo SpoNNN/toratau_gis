@@ -2,11 +2,8 @@
   <div>
     <div id="map" class="map" tabindex="0" style="min-height: 850px"></div>
 
-    <div
-      v-if="popupVisible"
-      :style="{ top: popupPosition.y + 'px', left: popupPosition.x + 'px' }"
-      class="custom-popup"
-    >
+    <div v-if="popupVisible" :style="{ top: popupPosition.y + 'px', left: popupPosition.x + 'px' }"
+      class="custom-popup">
       <button class="close-btn" @click="hidePopup">✖</button>
       <h3 class="popup-title">{{ popupText }}</h3>
       <p class="popup-subtitle">Адрес</p>
@@ -79,6 +76,11 @@ export default {
     points: {
       type: Array,
       default: () => []
+    },
+
+    routeColor: {
+      type: String,
+      default: '#FFB800'
     }
   },
   emits: ['navigate'],
@@ -111,7 +113,7 @@ export default {
     const defaultPointStyle = new Style({
       image: new CircleStyle({
         radius: 7,
-        fill: new Fill({ color: '#FFB800' }),
+        fill: new Fill({ color: '#' + props.routeColor || '#FFB800', }),
         stroke: new Stroke({ color: '#fff', width: 2 }),
       }),
     });
@@ -127,12 +129,12 @@ export default {
     const clearLayers = () => {
       vectorLayers.forEach(layer => map.removeLayer(layer));
       vectorLayers = [];
-      
+
       if (pointsLayer) {
         map.removeLayer(pointsLayer);
         pointsLayer = null;
       }
-      
+
       if (routePointsLayer) {
         map.removeLayer(routePointsLayer);
         routePointsLayer = null;
@@ -151,7 +153,7 @@ export default {
       }
 
       const coordinates = points.map(p => `${p.lon},${p.lat}`).join(';');
-      
+
       try {
         const response = await fetch(
           `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`,
@@ -168,22 +170,22 @@ export default {
         }
 
         const data = await response.json();
-        
+
         if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
           throw new Error('Маршрут не найден');
         }
 
         const routeCoordinates = data.routes[0].geometry.coordinates;
-        
+
         const projectedCoordinates = routeCoordinates.map(coord => fromLonLat(coord));
-        
+
         const lineFeature = new Feature({
           geometry: new LineString(projectedCoordinates)
         });
 
         const routeStyle = new Style({
           stroke: new Stroke({
-            color: '#FFB800',
+            color: '#' + props.routeColor || '#FFB800',
             width: 5,
           }),
         });
@@ -200,7 +202,7 @@ export default {
         });
 
         map.addLayer(pointsRouteLayer);
-        
+
         const distance = (data.routes[0].distance / 1000).toFixed(2);
         const duration = Math.round(data.routes[0].duration / 60);
         console.log(`Маршрут построен: ${distance} км, ${duration} мин`);
@@ -214,7 +216,7 @@ export default {
     const buildRouteViaORS = async (points) => {
       try {
         const coordinates = points.map(p => [p.lon, p.lat]);
-        
+
         const body = {
           coordinates: coordinates
         };
@@ -233,7 +235,7 @@ export default {
         }
 
         const data = await response.json();
-        
+
         const geojsonFormat = new GeoJSON();
         const features = geojsonFormat.readFeatures(data, {
           featureProjection: 'EPSG:3857',
@@ -251,8 +253,8 @@ export default {
         });
 
         const vectorSource = new VectorSource({ features });
-        pointsRouteLayer = new VectorLayer({ 
-          source: vectorSource, 
+        pointsRouteLayer = new VectorLayer({
+          source: vectorSource,
           zIndex: 2
         });
 
@@ -266,17 +268,17 @@ export default {
 
     const extractPointsFromGeoJSON = (geoJSONData, routeConfig) => {
       const points = [];
-      
+
       try {
         if (geoJSONData.features && geoJSONData.features.length > 0) {
           geoJSONData.features.forEach((feature, featureIndex) => {
             if (feature.geometry && feature.geometry.type === 'LineString') {
               const coordinates = feature.geometry.coordinates;
-              
+
               const importantPoints = [
-                coordinates[0], 
-                coordinates[Math.floor(coordinates.length / 4)], 
-                coordinates[Math.floor(coordinates.length / 2)], 
+                coordinates[0],
+                coordinates[Math.floor(coordinates.length / 4)],
+                coordinates[Math.floor(coordinates.length / 2)],
                 coordinates[Math.floor(coordinates.length * 3 / 4)],
                 coordinates[coordinates.length - 1]
               ];
@@ -297,11 +299,11 @@ export default {
             }
           });
         }
-        
+
         if (geoJSONData.features && geoJSONData.features[0]?.properties?.way_points) {
           const wayPoints = geoJSONData.features[0].properties.way_points;
           const coordinates = geoJSONData.features[0].geometry.coordinates;
-          
+
           wayPoints.forEach((wayPointIndex, index) => {
             if (coordinates[wayPointIndex]) {
               points.push({
@@ -318,7 +320,7 @@ export default {
       } catch (error) {
         console.error('Ошибка при извлечении точек из GeoJSON:', error);
       }
-      
+
       return points;
     };
 
@@ -332,7 +334,7 @@ export default {
         })
         .then((data) => {
           console.log(`Маршрут ${routeConfig.slug} загружен успешно`);
-          
+
           const geojsonFormat = new GeoJSON();
           const features = geojsonFormat.readFeatures(data, {
             featureProjection: 'EPSG:3857',
@@ -350,9 +352,9 @@ export default {
           });
 
           const vectorSource = new VectorSource({ features });
-          const vectorLayer = new VectorLayer({ 
-            source: vectorSource, 
-            zIndex: 1 
+          const vectorLayer = new VectorLayer({
+            source: vectorSource,
+            zIndex: 1
           });
 
           map.addLayer(vectorLayer);
@@ -377,7 +379,7 @@ export default {
         });
 
         feature.set('properties', point);
-        
+
         const pointStyle = new Style({
           image: new CircleStyle({
             radius: 6,
@@ -409,7 +411,7 @@ export default {
 
       const features = props.points.map((point, index) => {
         console.log(`  Координаты: lon=${point.lon}, lat=${point.lat}`);
-        
+
         const feature = new Feature({
           geometry: new Point(fromLonLat([point.lon, point.lat])),
         });
@@ -435,14 +437,14 @@ export default {
     const loadMap = () => {
       clearLayers();
 
-      // Если есть точки для отрисовки, отрисовываем только их без маршрутов
+   
       if (props.points && props.points.length > 0) {
         showAllRoutes.value = false;
         loadPoints();
         return;
       }
 
-      // Если точек нет, отрисовываем маршруты
+     
       if (props.routeSlug) {
         showAllRoutes.value = false;
         const routeConfig = routesConfig.find(r => r.slug === props.routeSlug);
@@ -496,12 +498,12 @@ export default {
       if (!pointsLayer && !routePointsLayer) return;
 
       let feature = null;
-    
+
       if (pointsLayer) {
         const features = pointsLayer.getSource().getFeatures();
         feature = features.find(f => f.get('properties').name === name);
       }
-      
+
       if (!feature && routePointsLayer) {
         const features = routePointsLayer.getSource().getFeatures();
         feature = features.find(f => f.get('properties').name === name);
@@ -526,7 +528,7 @@ export default {
             selectedFeature.setStyle(defaultPointStyle);
           }
         }
-        
+
         feature.setStyle(selectedPointStyle);
         selectedFeature = feature;
 
@@ -593,7 +595,7 @@ export default {
                 selectedFeature.setStyle(defaultPointStyle);
               }
             }
-            
+
             feature.setStyle(selectedPointStyle);
             selectedFeature = feature;
 

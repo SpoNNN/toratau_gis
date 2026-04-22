@@ -1,11 +1,10 @@
-
 <script setup lang="ts">
 import SearchInput from './SearchInput.vue'
 import BookingCalendar from '../components/BookingCalendar.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
-import { InfoCircleOutlined, PlusOutlined, CalendarOutlined } from '@ant-design/icons-vue'
+import { InfoCircleOutlined, PlusOutlined, CalendarOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons-vue'
 
 const { userId } = useAuthCheck()
 const open = ref<boolean>(false)
@@ -95,9 +94,7 @@ const loadRoute = async (id: number) => {
 
 const formattedDuration = computed(() => {
   if (!route.value?.duration) return '0 мин'
-
-  const hours = route.value.duration 
-
+  const hours = route.value.duration
   return `${hours} ч `
 })
 
@@ -148,6 +145,114 @@ function navigateToPage(point: RoutePoint): void {
   setTimeout(() => {
     emit('navigate', point)
   }, 300)
+}
+
+const isDeletingPoint = ref(false)
+
+async function deletePoint(point: RoutePoint, index: number): Promise<void> {
+  if (!confirm(`Удалить точку "${point.name}"?`)) return
+
+  try {
+    isDeletingPoint.value = true
+    await axios.delete(`/api/routes/${actualRouteId.value}/points/${index}`)
+    await loadRoute(actualRouteId.value)
+  } catch (err) {
+    const errorMessage = (err as any).response?.data?.message || (err as any).message
+    alert('Не удалось удалить точку: ' + errorMessage)
+  } finally {
+    isDeletingPoint.value = false
+  }
+}
+
+
+const editModalVisible = ref(false)
+const editingPointIndex = ref<number | null>(null)
+const isEditSubmitting = ref(false)
+const editFileList = ref<any[]>([])
+
+const editFormState = ref<RoutePoint>({
+  name: '',
+  description: '',
+  address: '',
+  url: '',
+  point_name: '',
+  lon: 0,
+  lat: 0,
+  images: [],
+})
+
+function openEditModal(point: RoutePoint, index: number): void {
+  editingPointIndex.value = index
+  editFormState.value = {
+    name: point.name,
+    description: point.description,
+    address: point.address,
+    url: point.url,
+    point_name: point.point_name,
+    lon: point.lon,
+    lat: point.lat,
+    images: [...(point.images || [])],
+  }
+  
+  editFileList.value = (point.images || []).map((url, i) => ({
+    uid: `existing-${i}`,
+    name: `image-${i}`,
+    status: 'done',
+    url,
+  }))
+  editModalVisible.value = true
+}
+
+const handleEditBeforeUpload = (file: File) => {
+  const isImage = file.type.startsWith('image/')
+  if (!isImage) {
+    alert('Можно загружать только изображения!')
+    return false
+  }
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    alert('Изображение должно быть меньше 10MB!')
+    return false
+  }
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const base64 = e.target?.result as string
+    editFormState.value.images.push(base64)
+  }
+  reader.readAsDataURL(file)
+  return false
+}
+
+const handleEditRemoveImage = (file: any) => {
+  const index = editFileList.value.indexOf(file)
+  if (index > -1) {
+    editFileList.value.splice(index, 1)
+    editFormState.value.images.splice(index, 1)
+  }
+}
+
+const onEditFinish = async () => {
+  if (editingPointIndex.value === null) return
+  try {
+    isEditSubmitting.value = true
+    await axios.put(`/api/routes/${actualRouteId.value}/points/${editingPointIndex.value}`, {
+      name: editFormState.value.name,
+      description: editFormState.value.description,
+      address: editFormState.value.address,
+      url: editFormState.value.url,
+      point_name: editFormState.value.point_name,
+      lon: editFormState.value.lon,
+      lat: editFormState.value.lat,
+      images: JSON.stringify(editFormState.value.images),
+    })
+    await loadRoute(actualRouteId.value)
+    editModalVisible.value = false
+  } catch (err) {
+    const errorMessage = (err as any).response?.data?.message || (err as any).message
+    alert('Не удалось обновить точку: ' + errorMessage)
+  } finally {
+    isEditSubmitting.value = false
+  }
 }
 
 const formState = ref<RoutePoint>({
@@ -253,10 +358,10 @@ const onFinish = async () => {
 const onFinishFailed = (errorInfo: any) => {
   console.log('Ошибка формы:', errorInfo)
 }
-
 </script>
 
 <template>
+  
   <div class="container">
     <div v-if="isLoading" class="loading">Загрузка маршрута...</div>
 
@@ -317,9 +422,9 @@ const onFinishFailed = (errorInfo: any) => {
                 </template>
               </dl>
 
-              <a-button 
-                type="primary" 
-                size="large" 
+              <a-button
+                type="primary"
+                size="large"
                 block
                 class="booking-route-button"
                 @click="showBookingModal"
@@ -334,7 +439,7 @@ const onFinishFailed = (errorInfo: any) => {
             <h2 class="text-white mb-4">Точки маршрута</h2>
 
             <div v-if="route.point && route.point.length > 0" class="timeline-container">
-              <div class="timeline-item" v-for="(point, index) in route.point" :key="index" style="align-items: center; display: flex;">
+              <div class="timeline-item" v-for="(point, index) in route.point" :key="index">
                 <div class="timeline-number">{{ index + 1 }}</div>
 
                 <div class="timeline-text">
@@ -347,6 +452,24 @@ const onFinishFailed = (errorInfo: any) => {
 
                 <div class="map-button" @click="openPoint(point)">
                   На карте
+                </div>
+
+                <div
+                  v-if="isAuthenticated && isAdmin"
+                  class="edit-button"
+                  @click="openEditModal(point, index)"
+                  title="Редактировать точку"
+                >
+                  <EditOutlined />
+                </div>
+
+                <div
+                  v-if="isAuthenticated && isAdmin"
+                  class="delete-button"
+                  @click="deletePoint(point, index)"
+                  title="Удалить точку"
+                >
+                  <DeleteOutlined />
                 </div>
               </div>
             </div>
@@ -426,6 +549,75 @@ const onFinishFailed = (errorInfo: any) => {
               </a-form>
             </a-modal>
 
+            <!-- Модалка редактирования точки -->
+            <a-modal v-model:open="editModalVisible" title="Редактировать точку маршрута" :footer="null" width="600px">
+              <a-form :model="editFormState" layout="vertical" @finish="onEditFinish">
+                <a-form-item name="name" label="Название точки"
+                  :rules="[{ required: true, message: 'Введите название' }]">
+                  <a-input v-model:value="editFormState.name" placeholder="Например: БГПУ им. М. Акмуллы" />
+                </a-form-item>
+
+                <a-form-item name="description" label="Описание">
+                  <a-textarea v-model:value="editFormState.description" placeholder="Подробное описание точки маршрута"
+                    :rows="4" />
+                </a-form-item>
+
+                <a-form-item name="address" label="Адрес" :rules="[{ required: true, message: 'Введите адрес' }]">
+                  <a-input v-model:value="editFormState.address" placeholder="Например: ул. Октябрьской Революции, 3а" />
+                </a-form-item>
+
+                <a-row :gutter="16">
+                  <a-col :span="12">
+                    <a-form-item name="lon" label="Долгота (Longitude)"
+                      :rules="[{ required: true, message: 'Введите долготу' }]">
+                      <a-input-number v-model:value="editFormState.lon" placeholder="54.123456" :step="0.000001"
+                        :precision="6" style="width: 100%" />
+                    </a-form-item>
+                  </a-col>
+                  <a-col :span="12">
+                    <a-form-item name="lat" label="Широта (Latitude)"
+                      :rules="[{ required: true, message: 'Введите широту' }]">
+                      <a-input-number v-model:value="editFormState.lat" placeholder="55.123456" :step="0.000001"
+                        :precision="6" style="width: 100%" />
+                    </a-form-item>
+                  </a-col>
+                </a-row>
+
+                <a-form-item name="url" label="Ссылка (необязательно)">
+                  <a-input v-model:value="editFormState.url" placeholder="https://example.com" />
+                </a-form-item>
+
+                <a-form-item name="point_name" label="Идентификатор точки (необязательно)">
+                  <a-input v-model:value="editFormState.point_name" placeholder="bspu_point_1" />
+                </a-form-item>
+
+                <a-form-item name="images" label="Изображения (необязательно)">
+                  <a-upload v-model:file-list="editFileList" list-type="picture-card"
+                    :before-upload="handleEditBeforeUpload" @remove="handleEditRemoveImage"
+                    accept="image/*" :multiple="true">
+                    <div v-if="editFileList.length < 8">
+                      <plus-outlined />
+                      <div style="margin-top: 8px">Загрузить</div>
+                    </div>
+                  </a-upload>
+                  <div style="color: #999; font-size: 12px; margin-top: 8px;">
+                    Можно загрузить до 8 изображений. Максимальный размер файла: 10MB
+                  </div>
+                </a-form-item>
+
+                <a-form-item style="margin-bottom: 0; margin-top: 24px;">
+                  <a-space>
+                    <a-button type="primary" html-type="submit" :loading="isEditSubmitting">
+                      {{ isEditSubmitting ? 'Сохранение...' : 'Сохранить изменения' }}
+                    </a-button>
+                    <a-button @click="editModalVisible = false">
+                      Отмена
+                    </a-button>
+                  </a-space>
+                </a-form-item>
+              </a-form>
+            </a-modal>
+
             <a-modal v-model:open="imageModalVisible" :footer="null" width="80%" style="max-width: 1000px;">
               <div class="image-viewer">
                 <img v-if="currentImages[currentImageIndex]" :src="currentImages[currentImageIndex]"
@@ -454,7 +646,7 @@ const onFinishFailed = (errorInfo: any) => {
       Маршрут не найден
     </div>
 
-    <BookingCalendar 
+    <BookingCalendar
       v-model:visible="bookingModalVisible"
       :userId="userId"
       :route-id="actualRouteId"
@@ -536,7 +728,7 @@ const onFinishFailed = (errorInfo: any) => {
 
 .timeline-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 15px;
   margin-bottom: 25px;
   position: relative;
@@ -617,7 +809,46 @@ const onFinishFailed = (errorInfo: any) => {
   color: #FFB800;
 }
 
-/* Стили для табов */
+.edit-button {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.edit-button:hover {
+  background-color: rgba(255, 184, 0, 0.15);
+  border-color: #FFB800;
+  color: #FFB800;
+}
+
+.delete-button {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.delete-button:hover {
+  background-color: rgba(255, 77, 79, 0.15);
+  border-color: #ff4d4f;
+  color: #ff4d4f;
+}
+
 .flex {
   display: flex;
 }
@@ -698,7 +929,6 @@ const onFinishFailed = (errorInfo: any) => {
   padding-bottom: 2rem;
 }
 
-/* Стили для изображений точек */
 .point-images {
   margin-top: 12px;
 }
@@ -745,7 +975,6 @@ const onFinishFailed = (errorInfo: any) => {
   border-color: #FFB800;
 }
 
-/* Стили для модалки с изображениями */
 .image-viewer {
   display: flex;
   flex-direction: column;
@@ -772,6 +1001,7 @@ const onFinishFailed = (errorInfo: any) => {
   min-width: 80px;
   text-align: center;
 }
+
 .booking-route-button {
   margin-top: 24px;
   height: 48px;

@@ -58,8 +58,9 @@ Route::prefix('api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/user', [AuthController::class, 'user']);
         Route::post('/routes/{id}/points', [PointController::class, 'addPoint']);
+        Route::delete('/routes/{routeId}/points/{pointIndex}', [PointController::class, 'deletePoint']);
         Route::get('/user/reviews', [ScoreController::class, 'userReviews']);
-
+        Route::put('/routes/{routeId}/points/{pointIndex}', [PointController::class, 'updatePoint']);
         Route::prefix('favorites')->group(function () {
             Route::get('/', [FavoriteController::class, 'index']);
             Route::post('/', [FavoriteController::class, 'store']);
@@ -115,4 +116,3 @@ Route::get('/test-date', function () {
 });
 
 Route::get('/api/admin/test', [App\Http\Controllers\TestController::class, 'test']);
-

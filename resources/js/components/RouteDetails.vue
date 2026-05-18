@@ -358,6 +358,21 @@ const onFinish = async () => {
 const onFinishFailed = (errorInfo: any) => {
   console.log('Ошибка формы:', errorInfo)
 }
+
+
+const getTimelineNumberStyle = (color: string | null) => {
+  if (color && color !== '#FFFFFF' && color !== '#ffffff' && color !== 'white') {
+    return {
+      backgroundColor: '#' + color,
+      color: '#ffffff'
+    }
+  }
+
+  return {
+    backgroundColor: '#FFB800',
+    color: '#32368E'
+  }
+}
 </script>
 
 <template>
@@ -440,7 +455,9 @@ const onFinishFailed = (errorInfo: any) => {
 
             <div v-if="route.point && route.point.length > 0" class="timeline-container">
               <div class="timeline-item" v-for="(point, index) in route.point" :key="index">
-                <div class="timeline-number">{{ index + 1 }}</div>
+                <div class="timeline-number" :style="getTimelineNumberStyle(route.map_color)">
+                  {{ index + 1 }}
+                </div>
 
                 <div class="timeline-text">
                   <p style="margin-top: 0.25rem;">{{ point.name }}</p>
@@ -549,7 +566,6 @@ const onFinishFailed = (errorInfo: any) => {
               </a-form>
             </a-modal>
 
-            <!-- Модалка редактирования точки -->
             <a-modal v-model:open="editModalVisible" title="Редактировать точку маршрута" :footer="null" width="600px">
               <a-form :model="editFormState" layout="vertical" @finish="onEditFinish">
                 <a-form-item name="name" label="Название точки"
@@ -743,14 +759,13 @@ const onFinishFailed = (errorInfo: any) => {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background-color: #FFB800;
-  color: #32368E;
   display: flex;
   justify-content: center;
   align-items: center;
   font-size: 16px;
   font-weight: bold;
   z-index: 1;
+  transition: all 0.3s ease;
 }
 
 .timeline-text {

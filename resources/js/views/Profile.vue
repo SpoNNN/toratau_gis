@@ -15,101 +15,89 @@
       <div v-else class="profile-content">
         <div class="profile-main">
           <div class="tabs">
-            <button 
-              class="tab"
-              :class="{ active: activeTab === 'favorites' }"
-              @click="activeTab = 'favorites'"
-            >
+            <button class="tab" :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
               Избранные<br>маршруты
             </button>
-            <button 
-              class="tab"
-              :class="{ active: activeTab === 'saved' }"
-              @click="activeTab = 'saved'"
-            >
+            <button class="tab" :class="{ active: activeTab === 'saved' }" @click="activeTab = 'saved'">
               Забронированные<br>маршруты
             </button>
-            <button 
-              class="tab"
-              :class="{ active: activeTab === 'reviews' }"
-              @click="activeTab = 'reviews'"
-            >
+            <button class="tab" :class="{ active: activeTab === 'reviews' }" @click="activeTab = 'reviews'">
               Отзывы
             </button>
-            <button 
-              class="tab"
-              :class="{ active: activeTab === 'history' }"
-              @click="activeTab = 'history'"
-            >
+            <button class="tab" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">
               История посещений
             </button>
           </div>
 
           <div class="routes-list">
-     
-            <div v-if="activeTab === 'saved'">
-              <div 
-                v-for="booking in savedRoutes" 
-                :key="booking.id"
-                class="booking-card"
-              >
-                <div class="booking-header">
-                  <div class="booking-badge">
-                    Вы записаны на {{ booking.event.date }}
-                  </div>
-                  <div class="booking-seats">
-                    Количество мест: {{ booking.seats }}
-                  </div>
-                </div>
 
-                <div 
-                  class="route-card"
-                  :style="{ backgroundColor: colorMap[booking.route.mapColor] || colorMap.default }"
-              
-                >
+            <div v-if="activeTab === 'saved'">
+              <div v-for="booking in savedRoutes" :key="booking.id" class="booking-card">
+                <div class="booking-header">
+                  <div class="booking-badge">Вы записаны на {{ booking.event.date }}</div>
+                  <div class="booking-seats">Количество мест: {{ booking.seats }}</div>
+                </div>
+                <div class="route-card" :style="{ backgroundColor: colorMap[booking.route.mapColor] || colorMap.default }">
                   <div class="route-info">
                     <h3>{{ booking.route.title }}</h3>
                     <p class="booking-time">Время: {{ booking.event.time }}</p>
                     <p class="booking-location">Место встречи: {{ booking.event.location }}</p>
                   </div>
                 </div>
-
                 <div class="booking-actions">
-                  <button class="btn-secondary" @click.stop>
-                    Перейти к маршруту
-                  </button>
-                  <button class="btn-cancel" @click.stop="cancelBooking(booking.id)">
-                    Отменить бронь
-                  </button>
+                  <button class="btn-secondary" @click.stop>Перейти к маршруту</button>
+                  <button class="btn-cancel" @click.stop="cancelBooking(booking.id)">Отменить бронь</button>
                 </div>
+              </div>
+              <div v-if="savedRoutes.length === 0" class="empty-state">
+                <p>У вас пока нет забронированных маршрутов</p>
               </div>
             </div>
 
-      
-            <div v-else>
-              <div 
-                v-for="route in filteredRoutes" 
+            <div v-else-if="activeTab === 'reviews'">
+              <div
+                v-for="route in reviewedRoutes"
                 :key="route.id"
-                class="route-card"
-                :class="{ 'non-clickable': activeTab === 'reviews', 'review-card': activeTab === 'reviews' }"
-                :style="activeTab !== 'reviews' ? { backgroundColor: route.color } : {}"
-              
+                class="route-card review-card"
+                :style="{ backgroundColor: route.mapColor ? '#' + route.mapColor : '#4F46E5' }"
               >
                 <div class="route-info">
                   <h3>{{ route.title }}</h3>
-                  <p v-if="activeTab !== 'reviews'">{{ route.subtitle }}</p>
-
-                  <div v-if="activeTab === 'reviews'" class="review-info">
+                  <div class="review-info">
                     <p class="review-rating">⭐ {{ route.rating }}</p>
                     <p class="review-comment">{{ route.comment }}</p>
                     <p class="review-date">{{ formatDate(route.created_at) }}</p>
                   </div>
                 </div>
+                <button
+                  class="delete-review-btn"
+                  @click.stop="deleteReview(route.reviewId)"
+                  title="Удалить отзыв"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                  </svg>
+                </button>
+              </div>
+              <div v-if="reviewedRoutes.length === 0" class="empty-state">
+                <p>Вы ещё не оставили ни одного отзыва</p>
+              </div>
+            </div>
 
-                <button 
+            <div v-else>
+              <div
+                v-for="route in filteredRoutes"
+                :key="route.id"
+                class="route-card"
+                :style="{ backgroundColor: route.color }"
+              >
+                <div class="route-info">
+                  <h3>{{ route.title }}</h3>
+                  <p v-if="activeTab !== 'reviews'">{{ route.subtitle }}</p>
+                </div>
+                <button
                   v-if="activeTab === 'favorites'"
-                  class="favorite-btn"
-                  :class="{ active: route.isFavorite }"
+                  class="favorite-btn active"
                   @click.stop="toggleFavorite(route.id)"
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -117,17 +105,12 @@
                   </svg>
                 </button>
               </div>
+              <div v-if="filteredRoutes.length === 0" class="empty-state">
+                <p v-if="activeTab === 'favorites'">У вас пока нет избранных маршрутов</p>
+                <p v-else>Пока нет маршрутов в этой категории</p>
+              </div>
             </div>
 
-            <div v-if="filteredRoutes.length === 0 && activeTab !== 'saved'" class="empty-state">
-              <p v-if="activeTab === 'favorites'">У вас пока нет избранных маршрутов</p>
-              <p v-else-if="activeTab === 'reviews'">Вы ещё не оставили ни одного отзыва</p>
-              <p v-else>Пока нет маршрутов в этой категории</p>
-            </div>
-
-            <div v-if="savedRoutes.length === 0 && activeTab === 'saved'" class="empty-state">
-              <p>У вас пока нет забронированных маршрутов</p>
-            </div>
           </div>
         </div>
       </div>
@@ -153,19 +136,23 @@ interface Route {
   title: string
   subtitle: string
   color: string
-  rating?: number
-  comment?: string
-  created_at?: string
   isFavorite: boolean
-  isBooked: boolean
-  hasReview: boolean
-  visited: boolean
+  slug?: string
+}
+
+interface ReviewRoute {
+  id: number         
+  reviewId: number  
+  title: string
+  mapColor: string | null
+  rating: number
+  comment: string
+  created_at: string
   slug?: string
 }
 
 interface BookedRoute {
   id: number
-  bookingDate: string
   seats: number
   route: {
     id: number
@@ -185,16 +172,15 @@ interface BookedRoute {
 }
 
 const favoriteRoutes = ref<Route[]>([])
-const reviewedRoutes = ref<Route[]>([])
+const reviewedRoutes = ref<ReviewRoute[]>([])
 const savedRoutes = ref<BookedRoute[]>([])
 const historyRoutes = ref<Route[]>([])
 
 const filteredRoutes = computed(() => {
   switch (activeTab.value) {
     case 'favorites': return favoriteRoutes.value
-    case 'reviews': return reviewedRoutes.value
-    case 'history': return historyRoutes.value
-    default: return []
+    case 'history':   return historyRoutes.value
+    default:          return []
   }
 })
 
@@ -210,17 +196,12 @@ const colorMap: Record<string, string> = {
 const fetchProfileData = async () => {
   try {
     isLoading.value = true
-
     const userResponse = await axios.get('/api/user')
     user.value = userResponse.data
-
     await fetchFavorites()
     await fetchUserReviews()
     await fetchBookedRoutes()
-
   } catch (error) {
-    console.error('Ошибка загрузки профиля', error)
-
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       router.push('/')
     }
@@ -232,20 +213,15 @@ const fetchProfileData = async () => {
 const fetchFavorites = async () => {
   try {
     const response = await axios.get('/api/favorites')
-
     favoriteRoutes.value = response.data.data.map((favorite: any) => {
       const r = favorite.route
-
       return {
         id: r.id,
         title: r.title,
         subtitle: r.description?.substring(0, 100) + '...',
-        color: colorMap[r.mapColor] || colorMap.default,
+        color: r.mapColor ? '#' + r.mapColor : colorMap.default,
         slug: r.slug,
         isFavorite: true,
-        isBooked: false,
-        hasReview: false,
-        visited: false
       }
     })
   } catch (error) {
@@ -256,22 +232,17 @@ const fetchFavorites = async () => {
 const fetchUserReviews = async () => {
   try {
     const response = await axios.get('/api/user/reviews')
-
     reviewedRoutes.value = response.data.data.map((review: any) => {
       const r = review.route
       return {
         id: r.id,
+        reviewId: review.id,      
         title: r.title,
-        subtitle: '',
-        color: colorMap[r.mapColor] || colorMap.default,
+        mapColor: r.mapColor, 
         slug: r.slug,
-        isFavorite: false,
-        isBooked: false,
-        hasReview: true,
-        visited: false,
         rating: review.rating,
         comment: review.comment,
-        created_at: review.created_at
+        created_at: review.created_at,
       }
     })
   } catch (error) {
@@ -281,16 +252,10 @@ const fetchUserReviews = async () => {
 
 const fetchBookedRoutes = async () => {
   try {
-    if (!user.value?.id) {
-      console.error('User ID not found')
-      return
-    }
-
+    if (!user.value?.id) return
     const response = await axios.get(`/api/user/${user.value.id}/bookings`)
-    
     if (response.data.success) {
       savedRoutes.value = response.data.data
-      console.log('Загружено бронирований:', savedRoutes.value.length)
     }
   } catch (error) {
     console.error('Ошибка загрузки бронирований', error)
@@ -303,46 +268,38 @@ const toggleFavorite = async (routeId: number) => {
     favoriteRoutes.value = favoriteRoutes.value.filter(r => r.id !== routeId)
     message.success('Маршрут удален из избранного')
   } catch (error) {
-    console.error('Ошибка при удалении избранного', error)
     message.error('Не удалось удалить маршрут')
+  }
+}
+
+const deleteReview = async (reviewId: number) => {
+  if (!confirm('Удалить отзыв?')) return
+  try {
+    await axios.delete(`/api/score/${reviewId}`)
+    reviewedRoutes.value = reviewedRoutes.value.filter(r => r.reviewId !== reviewId)
+    message.success('Отзыв удалён')
+  } catch (error) {
+    message.error('Не удалось удалить отзыв')
   }
 }
 
 const cancelBooking = async (bookingId: number) => {
   try {
     const response = await axios.delete(`/api/bookings/${bookingId}`)
-    
     if (response.data.success) {
       savedRoutes.value = savedRoutes.value.filter(b => b.id !== bookingId)
       message.success('Бронирование отменено')
     }
   } catch (error) {
-    console.error('Ошибка отмены бронирования', error)
     message.error('Не удалось отменить бронирование')
-  }
-}
-
-const navigateToRoute = (routeId: number) => {
-  const all = [...favoriteRoutes.value, ...reviewedRoutes.value]
-  const route = all.find(r => r.id === routeId)
-
-  if (route?.slug) {
-    router.push(`/route/${route.slug}`)
-  } else {
-   
-    const booking = savedRoutes.value.find(b => b.route.id === routeId)
-    if (booking?.route.slug) {
-      router.push(`/route/${booking.route.slug}`)
-    }
   }
 }
 
 const handleSignOut = async () => {
   try {
     await axios.post('/logout')
-  } catch (error) {
-    console.error('Logout error:', error)
-  } finally {
+  } catch {}
+  finally {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user')
     delete axios.defaults.headers.common['Authorization']
@@ -356,14 +313,8 @@ const formatDate = (dateStr: string) => {
 
 onMounted(async () => {
   const token = localStorage.getItem('auth_token')
-
-  if (!token) {
-    router.push('/')
-    return
-  }
-
+  if (!token) { router.push('/'); return }
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-
   await fetchProfileData()
 })
 </script>
@@ -421,10 +372,7 @@ onMounted(async () => {
   line-height: 1.4;
 }
 
-.tab:hover {
-  background: #F3F4F6;
-  color: #374151;
-}
+.tab:hover { background: #F3F4F6; color: #374151; }
 
 .tab.active {
   background: white;
@@ -439,6 +387,7 @@ onMounted(async () => {
   overflow-y: auto;
 }
 
+/* Booking */
 .booking-card {
   background: white;
   border: 2px solid #E5E7EB;
@@ -475,6 +424,7 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+/* Route card */
 .route-card {
   display: flex;
   align-items: center;
@@ -486,25 +436,7 @@ onMounted(async () => {
   transition: all 0.3s ease;
 }
 
-.route-card.clickable {
-  cursor: pointer;
-  margin-bottom: 0;
-}
-
-.route-card.clickable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.review-card {
-  background-color: #4F46E5;
-  border: 2px solid #4F46E5;
-  box-shadow: none;
-}
-
-.route-info {
-  flex: 1;
-}
+.route-info { flex: 1; }
 
 .route-info h3 {
   margin: 0 0 8px 0;
@@ -523,9 +455,13 @@ onMounted(async () => {
 
 .booking-time,
 .booking-location {
-  margin: 4px 0;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.95);
+  margin: 4px 0 !important;
+  font-size: 13px !important;
+}
+
+/* Review card */
+.review-card {
+  align-items: flex-start;
 }
 
 .review-info {
@@ -534,15 +470,33 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.review-rating {
-  font-size: 16px;
-  font-weight: 600;
+.review-rating { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+.review-comment { margin: 4px 0; }
+.review-date { margin: 4px 0 0; font-size: 12px; opacity: 0.8; }
+
+/* Delete review button */
+.delete-review-btn {
+  flex-shrink: 0;
+  margin-left: 16px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: all 0.2s;
 }
 
-.review-comment {
-  margin-top: 4px;
+.delete-review-btn:hover {
+  background: rgba(220, 38, 38, 0.5);
+  transform: scale(1.1);
 }
 
+/* Booking actions */
 .booking-actions {
   display: flex;
   gap: 12px;
@@ -563,24 +517,12 @@ onMounted(async () => {
   border: none;
 }
 
-.btn-secondary {
-  background: #4F46E5;
-  color: white;
-}
+.btn-secondary { background: #4F46E5; color: white; }
+.btn-secondary:hover { background: #4338CA; }
+.btn-cancel { background: #FEE2E2; color: #DC2626; }
+.btn-cancel:hover { background: #FCA5A5; }
 
-.btn-secondary:hover {
-  background: #4338CA;
-}
-
-.btn-cancel {
-  background: #FEE2E2;
-  color: #DC2626;
-}
-
-.btn-cancel:hover {
-  background: #FCA5A5;
-}
-
+/* Favorite button */
 .favorite-btn {
   width: 40px;
   height: 40px;
@@ -597,14 +539,8 @@ onMounted(async () => {
   margin-left: 16px;
 }
 
-.favorite-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-}
-
-.favorite-btn.active {
-  background: rgba(255, 255, 255, 0.3);
-}
+.favorite-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.1); }
+.favorite-btn.active { background: rgba(255, 255, 255, 0.3); }
 
 .empty-state {
   text-align: center;
@@ -612,61 +548,20 @@ onMounted(async () => {
   color: #6B7280;
 }
 
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-}
+.empty-state p { font-size: 16px; margin: 0; }
 
-.routes-list::-webkit-scrollbar {
-  width: 8px;
-}
-
-.routes-list::-webkit-scrollbar-track {
-  background: #F3F4F6;
-  border-radius: 4px;
-}
-
-.routes-list::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
-  border-radius: 4px;
-}
-
-.routes-list::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
-}
+.routes-list::-webkit-scrollbar { width: 8px; }
+.routes-list::-webkit-scrollbar-track { background: #F3F4F6; border-radius: 4px; }
+.routes-list::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
+.routes-list::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
 @media (max-width: 768px) {
-  .profile-content {
-    flex-direction: column;
-  }
-
-  .tabs {
-    overflow-x: auto;
-  }
-
-  .tab {
-    white-space: nowrap;
-    min-width: 120px;
-  }
-
-  .booking-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .booking-actions {
-    flex-direction: column;
-  }
-
-  .route-card {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-
-  .favorite-btn {
-    margin-left: 0;
-  }
+  .profile-content { flex-direction: column; }
+  .tabs { overflow-x: auto; }
+  .tab { white-space: nowrap; min-width: 120px; }
+  .booking-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .booking-actions { flex-direction: column; }
+  .route-card { flex-direction: column; text-align: center; gap: 12px; }
+  .favorite-btn, .delete-review-btn { margin-left: 0; }
 }
 </style>

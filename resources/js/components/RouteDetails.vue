@@ -456,7 +456,7 @@ const getTimelineNumberStyle = (color: string | null) => {
             <div v-if="route.point && route.point.length > 0" class="timeline-container">
               <div class="timeline-item" v-for="(point, index) in route.point" :key="index">
                 <div class="timeline-number" :style="getTimelineNumberStyle(route.map_color)">
-                  {{ index + 1 }}
+                 <div style="color: black;"> {{ index + 1 }}</div>
                 </div>
 
                 <div class="timeline-text">

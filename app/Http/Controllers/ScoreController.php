@@ -7,9 +7,6 @@ use App\Models\Score;
 
 class ScoreController extends Controller
 {
-    // ================================
-    // GET /api/routes/{id}/reviews
-    // ================================
     public function index($id)
     {
         $reviews = Score::with('user')
@@ -17,16 +14,15 @@ class ScoreController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        // Нормализуем данные
         $reviews->getCollection()->transform(function ($item) {
             return [
-                'id'        => $item->id,
-                'user_id'   => $item->user_id,
-                'route_id'  => $item->route_id,
-                'rating'    => $item->star_rate,
-                'comment'   => $item->text,
-                'created_at'=> $item->created_at,
-                'user'      => [
+                'id'         => $item->id,
+                'user_id'    => $item->user_id,
+                'route_id'   => $item->route_id,
+                'rating'     => $item->star_rate,
+                'comment'    => $item->text,
+                'created_at' => $item->created_at,
+                'user'       => [
                     'id'   => $item->user->id,
                     'name' => $item->user->name,
                 ]
@@ -36,9 +32,6 @@ class ScoreController extends Controller
         return response()->json($reviews);
     }
 
-    // ================================
-    // POST /api/routes/{id}/reviews
-    // ================================
     public function store(Request $request, $id)
     {
         $request->validate([
@@ -48,11 +41,8 @@ class ScoreController extends Controller
 
         $user = auth()->user();
 
-       
         if (Score::where('route_id', $id)->where('user_id', $user->id)->exists()) {
-            return response()->json([
-                'message' => 'Вы уже оставили отзыв'
-            ], 400);
+            return response()->json(['message' => 'Вы уже оставили отзыв'], 400);
         }
 
         $review = Score::create([
@@ -66,45 +56,60 @@ class ScoreController extends Controller
 
         return response()->json([
             'data' => [
-                'id'        => $review->id,
-                'user_id'   => $review->user_id,
-                'route_id'  => $review->route_id,
-                'rating'    => $review->star_rate,
-                'comment'   => $review->text,
-                'created_at'=> $review->created_at,
-                'user'      => [
+                'id'         => $review->id,
+                'user_id'    => $review->user_id,
+                'route_id'   => $review->route_id,
+                'rating'     => $review->star_rate,
+                'comment'    => $review->text,
+                'created_at' => $review->created_at,
+                'user'       => [
                     'id'   => $review->user->id,
                     'name' => $review->user->name,
                 ]
             ]
         ]);
     }
+
     public function userReviews()
-{
-    $user = auth()->user();
+    {
+        $user = auth()->user();
 
-    $reviews = Score::with('route')
-        ->where('user_id', $user->id)
-        ->orderBy('created_at', 'desc')
-        ->get();
+        $reviews = Score::with('route')
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-    return response()->json([
-        'data' => $reviews->map(function ($review) {
-            return [
-                'id'        => $review->id,
-                'route_id'  => $review->route_id,
-                'rating'    => $review->star_rate,
-                'comment'   => $review->text,
-                'created_at'=> $review->created_at,
-                'route'     => [
-                    'id'    => $review->route->id,
-                    'title' => $review->route->title,
-                    'slug'  => $review->route->slug,
-                    'mapColor' => $review->route->mapColor,
-                ]
-            ];
-        })
-    ]);
-}
+        return response()->json([
+            'data' => $reviews->map(function ($review) {
+                return [
+                    'id'         => $review->id,
+                    'route_id'   => $review->route_id,
+                    'rating'     => $review->star_rate,
+                    'comment'    => $review->text,
+                    'created_at' => $review->created_at,
+                    'route'      => [
+                        'id'       => $review->route->id,
+                        'title'    => $review->route->title,
+                        'slug'     => $review->route->slug,
+                        'mapColor' => $review->route->mapColor,
+                    ]
+                ];
+            })
+        ]);
+    }
 
+    public function destroy($id)
+    {
+        $user = auth()->user();
+        $review = Score::findOrFail($id);
+
+        // Только автор может удалить свой отзыв
+        if ($review->user_id !== $user->id) {
+            return response()->json(['message' => 'Нет прав для удаления'], 403);
+        }
+
+        $review->delete();
+
+        return response()->json(['success' => true, 'message' => 'Отзыв удалён']);
+    }
 }

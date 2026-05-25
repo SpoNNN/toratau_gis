@@ -84,6 +84,12 @@ Route::prefix('api/admin')->group(function () {
     Route::get('/approval-requests/{id}', [App\Http\Controllers\ApprovalController::class, 'getRequest']);
     Route::delete('/approval-requests/{id}', [App\Http\Controllers\ApprovalController::class, 'deleteRequest']);
     Route::post('/approval-requests/{id}/resend', [App\Http\Controllers\ApprovalController::class, 'resendEmails']);
+    Route::post('/routes', [RouteController::class, 'store']);
+    Route::put('/routes/{id}', [RouteController::class, 'update']);   
+    Route::delete('/routes/{id}', [RouteController::class, 'destroy']);
+    Route::post('/routes/{routeId}/route-info', [RouteController::class, 'storeOrUpdateInfo']);
+
+
     // Route::delete('/approval-requests/{id}/cancel', [App\Http\Controllers\ApprovalController::class, 'cancelRequest']); // Временно закомментировано
 });
 

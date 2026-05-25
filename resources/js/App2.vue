@@ -33,13 +33,15 @@
 
   <div v-else class="app-container">
     <div class="sidebar">
-      <way
-        v-if="currentPage === 'way'"
-        ref="wayRef"
-        :routes="Object.values(routesData)"
-        @navigate="handleNavigate"
-        @selectRoute="handleSelectRoute"
-      />
+<way
+  v-if="currentPage === 'way'"
+  ref="wayRef"
+  :routes="Object.values(routesData)"
+  :isAdmin="isAdmin"
+  @navigate="handleNavigate"
+  @selectRoute="handleSelectRoute"
+/>
+
 
       <RouteDetails 
         v-if="currentPage === 'RouteDetails.vue' && selectedRouteId !== null" 

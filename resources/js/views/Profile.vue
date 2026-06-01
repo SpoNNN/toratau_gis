@@ -10,9 +10,11 @@
     />
 
     <div class="profile-container">
+       <h1 class="welcome-greeting"> Здравствуйте, {{ userName }}!</h1>
       <div v-if="isLoading" class="loading">Загрузка...</div>
 
       <div v-else class="profile-content">
+       
         <div class="profile-main">
           <div class="tabs">
             <button class="tab" :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
@@ -130,6 +132,13 @@ const isLoggedIn = ref(true)
 const isLoading = ref(false)
 const user = ref<any>(null)
 const activeTab = ref('favorites')
+
+const userName = computed(()=>{
+  if (user.value?.name) {
+    return user.value.name
+  }
+  return 'Пользователь'
+})
 
 interface Route {
   id: number
@@ -320,6 +329,18 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+
+.welcome-greeting{
+  font-size: 27px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 10px 0 10px 0;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+}
 .profile-page {
   min-height: 100vh;
   background: #E5E7EB;

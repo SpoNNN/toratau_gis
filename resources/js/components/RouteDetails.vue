@@ -38,7 +38,7 @@ interface Route {
   audience: string
   distance: string
   participants: string
-  duration: number
+  duration: string
   slug: string
   info_items: Record<string, InfoItem>
   point: RoutePoint[]

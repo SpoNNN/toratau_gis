@@ -21,9 +21,12 @@ Route::get('/', function () {
 Route::prefix('api/admin')->group(function () {
     Route::post('/events', [AdminController::class, 'createEvent']);
     Route::get('/events', [AdminController::class, 'getEvents']);
+
 });
 Route::prefix('api')->group(function () {
     Route::get('/routes/{routeId}/events', [RouteOrderController::class, 'getEventsByRoute']);
+
+    Route::get('/events', [RouteOrderController::class, 'getAllEvents']);
 
     Route::get('/user/{userId}/bookings', [RouteOrderController::class, 'getUserBookings']);
 
@@ -85,7 +88,7 @@ Route::prefix('api/admin')->group(function () {
     Route::delete('/approval-requests/{id}', [App\Http\Controllers\ApprovalController::class, 'deleteRequest']);
     Route::post('/approval-requests/{id}/resend', [App\Http\Controllers\ApprovalController::class, 'resendEmails']);
     Route::post('/routes', [RouteController::class, 'store']);
-    Route::put('/routes/{id}', [RouteController::class, 'update']);   
+    Route::put('/routes/{id}', [RouteController::class, 'update']);
     Route::delete('/routes/{id}', [RouteController::class, 'destroy']);
     Route::post('/routes/{routeId}/route-info', [RouteController::class, 'storeOrUpdateInfo']);
 

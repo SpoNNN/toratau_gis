@@ -38,13 +38,44 @@
               @click="selectDate(day)"
             >
               <span class="day-number">{{ day.day }}</span>
-              <div v-if="day.hasEvent" class="event-indicator"></div>
+              <div v-if="day.eventColors.length" class="event-dots">
+                <span
+                  v-for="(color, i) in day.eventColors"
+                  :key="i"
+                  class="event-dot"
+                  :style="{ backgroundColor: '#' + color }"
+                ></span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="event-details" v-if="selectedEvent">
-          <div class="event-card">
+        <div class="event-details" v-if="selectedDateEvents.length > 1 && !selectedEventId">
+          <div class="route-picker">
+            <h3 class="picker-title">На эту дату несколько маршрутов</h3>
+            <p class="picker-subtitle">Выберите маршрут</p>
+
+            <button
+              v-for="ev in selectedDateEvents"
+              :key="ev.id"
+              class="route-pick-item"
+              :style="{ borderColor: '#' + (ev.mapColor || 'FFB800') }"
+              @click="selectedEventId = ev.id"
+            >
+              <span class="route-pick-color" :style="{ backgroundColor: '#' + (ev.mapColor || 'FFB800') }"></span>
+              <span class="route-pick-text">
+                <strong>{{ ev.routeTitle || ev.title }}</strong>
+                <span class="route-pick-time">{{ ev.startTime }} · {{ ev.location }}</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="event-details" v-else-if="selectedEvent">
+          <div
+            class="event-card"
+            :style="{ backgroundColor: '#' + (selectedEvent.mapColor || '025fb6') }"
+          >
             <div class="event-date">
               <div class="event-day">{{ selectedEvent.dayNumber }}</div>
               <div class="event-month">{{ selectedEvent.monthName }}</div>
@@ -52,8 +83,18 @@
             </div>
 
             <div class="event-info">
-              <h3 class="event-title">{{ selectedEvent.title }}</h3>
-              
+              <h3 class="event-title">
+                {{ selectedEvent.routeTitle ? selectedEvent.routeTitle + ' — ' : '' }}{{ selectedEvent.title }}
+              </h3>
+
+              <button
+                v-if="selectedDateEvents.length > 1"
+                class="change-route-btn"
+                @click="selectedEventId = null"
+              >
+                ← Выбрать другой маршрут
+              </button>
+
               <div class="event-time">
                 <div class="time-label">Начало</div>
                 <div class="time-value">{{ selectedEvent.startTime }}</div>
@@ -73,9 +114,9 @@
                 {{ selectedEvent.description }}
               </div>
 
-              <a-button 
-                type="primary" 
-                size="large" 
+              <a-button
+                type="primary"
+                size="large"
                 block
                 class="booking-button"
                 :disabled="selectedEvent.bookedSeats >= selectedEvent.totalSeats"
@@ -241,6 +282,8 @@ interface Event {
   location: string
   description: string
   routeId: number
+  routeTitle?: string
+  mapColor?: string
 }
 
 interface CalendarDay {
@@ -250,6 +293,7 @@ interface CalendarDay {
   isToday: boolean
   isSelected: boolean
   hasEvent: boolean
+  eventColors: string[]   // цвета всех событий на этот день (без #)
 }
 
 interface BookingFormState {
@@ -263,15 +307,16 @@ interface BookingFormState {
 
 const props = defineProps<{
   visible: boolean
-  routeId: number
-  routeTitle: string
-  userId: number  
+  routeId?: number | null
+  routeTitle?: string
+  userId: number
 }>()
 
 const emit = defineEmits(['update:visible', 'book', 'booking-success'])
 
 const currentDate = ref(dayjs())
 const selectedDate = ref<string | null>(null)
+const selectedEventId = ref<number | null>(null)
 const bookingFormVisible = ref(false)
 const isSubmitting = ref(false)
 const isLoading = ref(false)
@@ -283,7 +328,7 @@ const formState = ref<BookingFormState>({
   seats: 1,
   phone: '',
   email: '',
-  userId: 0  
+  userId: 0
 })
 
 const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
@@ -297,12 +342,11 @@ const currentMonthName = computed(() => monthNames[currentDate.value.month()])
 const currentYear = computed(() => currentDate.value.year())
 
 const loadEvents = async () => {
-  if (!props.routeId) return
-
   try {
     isLoading.value = true
-    const response = await axios.get(`/api/routes/${props.routeId}/events`)
-    
+
+    const response = await axios.get('/api/events')
+
     if (response.data.success) {
       events.value = response.data.data
     } else {
@@ -316,73 +360,80 @@ const loadEvents = async () => {
   }
 }
 
+const eventsForDate = (date: string): Event[] => {
+  return events.value.filter(event => event.date === date)
+}
+
+const hasEvent = (date: string) => eventsForDate(date).length > 0
+
 const calendarDays = computed(() => {
   const days: CalendarDay[] = []
   const firstDay = currentDate.value.startOf('month')
   const lastDay = currentDate.value.endOf('month')
-  
+
   let dayOfWeek = firstDay.day()
   if (dayOfWeek === 0) dayOfWeek = 7
-  
+
   const prevMonthDays = dayOfWeek - 1
   const prevMonthStart = firstDay.subtract(prevMonthDays, 'day')
-  
-  for (let i = 0; i < prevMonthDays; i++) {
-    const date = prevMonthStart.add(i, 'day')
-    days.push({
+
+  const buildDay = (date: dayjs.Dayjs, isCurrentMonth: boolean): CalendarDay => {
+    const dateStr = date.format('YYYY-MM-DD')
+    const dayEvents = eventsForDate(dateStr)
+    const colors = Array.from(
+      new Set(dayEvents.map(e => (e.mapColor || 'FFB800').replace('#', '')))
+    ).slice(0, 4)
+
+    return {
       day: date.date(),
-      date: date.format('YYYY-MM-DD'),
-      isCurrentMonth: false,
+      date: dateStr,
+      isCurrentMonth,
       isToday: date.isSame(dayjs(), 'day'),
-      isSelected: date.format('YYYY-MM-DD') === selectedDate.value,
-      hasEvent: hasEvent(date.format('YYYY-MM-DD'))
-    })
+      isSelected: dateStr === selectedDate.value,
+      hasEvent: dayEvents.length > 0,
+      eventColors: colors,
+    }
   }
-  
+
+  for (let i = 0; i < prevMonthDays; i++) {
+    days.push(buildDay(prevMonthStart.add(i, 'day'), false))
+  }
+
   const daysInMonth = lastDay.date()
   for (let i = 1; i <= daysInMonth; i++) {
-    const date = firstDay.date(i)
-    days.push({
-      day: i,
-      date: date.format('YYYY-MM-DD'),
-      isCurrentMonth: true,
-      isToday: date.isSame(dayjs(), 'day'),
-      isSelected: date.format('YYYY-MM-DD') === selectedDate.value,
-      hasEvent: hasEvent(date.format('YYYY-MM-DD'))
-    })
+    days.push(buildDay(firstDay.date(i), true))
   }
-  
+
   const totalCells = 42
   const remainingCells = totalCells - days.length
   const nextMonthStart = lastDay.add(1, 'day')
-  
   for (let i = 0; i < remainingCells; i++) {
-    const date = nextMonthStart.add(i, 'day')
-    days.push({
-      day: date.date(),
-      date: date.format('YYYY-MM-DD'),
-      isCurrentMonth: false,
-      isToday: date.isSame(dayjs(), 'day'),
-      isSelected: date.format('YYYY-MM-DD') === selectedDate.value,
-      hasEvent: hasEvent(date.format('YYYY-MM-DD'))
-    })
+    days.push(buildDay(nextMonthStart.add(i, 'day'), false))
   }
-  
+
   return days
 })
 
-const hasEvent = (date: string) => {
-  return events.value.some(event => event.date === date && event.routeId === props.routeId)
-}
+const selectedDateEvents = computed<Event[]>(() => {
+  if (!selectedDate.value) return []
+  return eventsForDate(selectedDate.value)
+})
 
 const selectedEvent = computed(() => {
   if (!selectedDate.value) return null
-  
-  const event = events.value.find(e => e.date === selectedDate.value && e.routeId === props.routeId)
+
+  let event: Event | undefined
+
+  if (selectedEventId.value !== null) {
+    event = selectedDateEvents.value.find(e => e.id === selectedEventId.value)
+  } else if (selectedDateEvents.value.length === 1) {
+    event = selectedDateEvents.value[0]
+  }
+
   if (!event) return null
-  
+
   const date = dayjs(selectedDate.value)
-  
+
   return {
     ...event,
     dayNumber: date.format('DD'),
@@ -390,6 +441,8 @@ const selectedEvent = computed(() => {
     weekday: date.format('dddd')
   }
 })
+
+const effectiveRouteId = computed(() => selectedEvent.value?.routeId ?? props.routeId ?? 0)
 
 const previousMonth = () => {
   currentDate.value = currentDate.value.subtract(1, 'month')
@@ -401,12 +454,20 @@ const nextMonth = () => {
 
 const selectDate = (day: CalendarDay) => {
   if (!day.hasEvent) return
+
   selectedDate.value = day.date
+  selectedEventId.value = null
+
+  const evs = eventsForDate(day.date)
+  if (evs.length === 1) {
+    selectedEventId.value = evs[0].id
+  }
 }
 
 const handleClose = () => {
   emit('update:visible', false)
   selectedDate.value = null
+  selectedEventId.value = null
 }
 
 const showBookingForm = () => {
@@ -438,17 +499,16 @@ const onSubmitBooking = async () => {
       seats: formState.value.seats,
       phone: formState.value.phone,
       email: formState.value.email,
-      userId: props.userId,   
+      userId: props.userId,
       eventDate: selectedEvent.value.date,
-      routeId: props.routeId
+      routeId: effectiveRouteId.value
     }
 
     const response = await axios.post('/api/bookings', bookingData)
 
     if (response.data.success) {
       message.success('Бронирование успешно создано!')
-      
-     
+
       const eventIndex = events.value.findIndex(e => e.id === selectedEvent.value!.id)
       if (eventIndex !== -1) {
         events.value[eventIndex].bookedSeats = response.data.data.bookedSeats
@@ -465,7 +525,7 @@ const onSubmitBooking = async () => {
 
   } catch (error: any) {
     console.error('Ошибка бронирования:', error)
-    
+
     if (error.response?.data?.message) {
       message.error(error.response.data.message)
     } else if (error.response?.data?.errors) {
@@ -479,20 +539,16 @@ const onSubmitBooking = async () => {
   }
 }
 
-
 watch(() => props.visible, (newVal) => {
   if (newVal) {
     currentDate.value = dayjs()
     selectedDate.value = null
+    selectedEventId.value = null
     loadEvents()
   }
 })
 
-watch(() => props.routeId, (newVal) => {
-  if (newVal && props.visible) {
-    loadEvents()
-  }
-})
+
 </script>
 
 <style scoped>
@@ -510,7 +566,7 @@ watch(() => props.routeId, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .current-month {
@@ -566,14 +622,13 @@ watch(() => props.routeId, (newVal) => {
 }
 
 .calendar-day.has-event {
-  background-color: #ffa940;
-  border-color: #ffa940;
+  border-color: #d9d9d9;
   border-radius: 35px;
   cursor: pointer;
 }
 
 .calendar-day.has-event:hover {
-  background-color: #ffe7ba;
+  background-color: #f0f5ff;
 }
 
 .calendar-day.selected.has-event {
@@ -586,17 +641,18 @@ watch(() => props.routeId, (newVal) => {
   font-weight: 500;
 }
 
-.event-indicator {
-  width: 6px;
-  height: 6px;
-  background-color: #ffa940;
-  border-radius: 50%;
+/* Цветные точки событий — по одной на каждый маршрут на эту дату */
+.event-dots {
+  display: flex;
+  gap: 3px;
   position: absolute;
   bottom: 4px;
 }
 
-.calendar-day.selected .event-indicator {
-  background-color: white;
+.event-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
 }
 
 .event-details {
@@ -648,6 +704,22 @@ watch(() => props.routeId, (newVal) => {
   font-weight: 600;
   margin: 0;
   color: white;
+}
+
+.change-route-btn {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.change-route-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .event-time {
@@ -722,6 +794,70 @@ watch(() => props.routeId, (newVal) => {
   justify-content: center;
   color: #999;
   text-align: center;
+}
+
+/* Выбор маршрута при нескольких событиях на дату */
+.route-picker {
+  background: #f5f5f5;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.picker-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: #1F2937;
+}
+
+.picker-subtitle {
+  font-size: 13px;
+  color: #6B7280;
+  margin: 0 0 16px;
+}
+
+.route-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.route-pick-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.route-pick-item:last-child {
+  margin-bottom: 0;
+}
+
+.route-pick-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.route-pick-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  color: #1F2937;
+}
+
+.route-pick-time {
+  font-size: 12px;
+  color: #6B7280;
 }
 
 .booking-form-container {

@@ -15,49 +15,52 @@ class RouteOrderController extends Controller
 {
 
     public function getEventsByRoute($routeId)
-    {
-        try {
-            $events = routeOrder::where('route_id', $routeId)
-                ->where('date', '>=', now()->startOfDay())
-                ->orderBy('date', 'asc')
-                ->with(['route', 'route.point'])
-                ->get()
-                ->map(function ($event) {
-                    $route = $event->route;
-                    
-                
-                    $firstPoint = $route ? $route->point()
-                        ->orderBy('pointName', 'asc')
-                        ->first() : null;
-                    
-                    $location = $firstPoint && $firstPoint->address 
-                        ? $firstPoint->address 
-                        : 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2';
-                    
-                    return [
-                        'id' => $event->id,
-                        'date' => Carbon::parse($event->date)->format('Y-m-d'),
-                        'title' => $route ? $route->title : 'Маршрут',
-                        'startTime' => Carbon::parse($event->date)->format('H:i'),
-                        'bookedSeats' => $event->ordered_users ?? 0,
-                        'totalSeats' => $event->max_users,
-                        'location' => $location,
-                        'description' => $route ? $route->description : 'Кампус Евразийского МОЦ#6',
-                        'routeId' => $event->route_id
-                    ];
-                });
-
-            return response()->json([
-                'success' => true,
-                'data' => $events
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка получения событий: ' . $e->getMessage()
-            ], 500);
-        }
+{
+    try {
+        $events = routeOrder::where('route_id', $routeId)
+            ->where('date', '>=', now()->startOfDay())
+            ->orderBy('date', 'asc')
+            ->with(['route', 'route.point'])
+            ->get()
+            ->map(function ($event) {
+                $route = $event->route;
+ 
+                $firstPoint = $route ? $route->point()
+                    ->orderBy('pointName', 'asc')
+                    ->first() : null;
+ 
+                $location = $firstPoint && $firstPoint->address
+                    ? $firstPoint->address
+                    : 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2';
+ 
+                return [
+                    'id'          => $event->id,
+                    'date'        => Carbon::parse($event->date)->format('Y-m-d'),
+                    'title'       => $route ? $route->title : 'Маршрут',
+                    'startTime'   => Carbon::parse($event->date)->format('H:i'),
+                    'bookedSeats' => $event->ordered_users ?? 0,
+                    'totalSeats'  => $event->max_users,
+                    'location'    => $location,
+                    'description' => $route ? $route->description : 'Кампус Евразийского МОЦ#6',
+                    'routeId'     => $event->route_id,
+                    // ── добавлено: цвет маршрута для точки/карточки на фронте ──
+                    'routeTitle'  => $route ? $route->title : 'Маршрут',
+                    'mapColor'    => $route && $route->mapColor ? $route->mapColor : 'FFB800',
+                ];
+            });
+ 
+        return response()->json([
+            'success' => true,
+            'data' => $events
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ошибка получения событий: ' . $e->getMessage()
+        ], 500);
     }
+}
+
 
     public function createBooking(Request $request)
     {
@@ -320,4 +323,49 @@ class RouteOrderController extends Controller
             ], 500);
         }
     }
+    public function getAllEvents()
+{
+    try {
+        $events = routeOrder::where('date', '>=', now()->startOfDay())
+            ->orderBy('date', 'asc')
+            ->with(['route', 'route.point'])
+            ->get()
+            ->map(function ($event) {
+                $route = $event->route;
+ 
+                $firstPoint = $route ? $route->point()
+                    ->orderBy('pointName', 'asc')
+                    ->first() : null;
+ 
+                $location = $firstPoint && $firstPoint->address
+                    ? $firstPoint->address
+                    : 'встреча группы состоится на адресу: ул. 50ти Бытам, 32/2';
+ 
+                return [
+                    'id'          => $event->id,
+                    'date'        => Carbon::parse($event->date)->format('Y-m-d'),
+                    'title'       => $route ? $route->title : 'Маршрут',
+                    'startTime'   => Carbon::parse($event->date)->format('H:i'),
+                    'bookedSeats' => $event->ordered_users ?? 0,
+                    'totalSeats'  => $event->max_users,
+                    'location'    => $location,
+                    'description' => $route ? $route->description : 'Кампус Евразийского МОЦ#6',
+                    'routeId'     => $event->route_id,
+                    'routeTitle'  => $route ? $route->title : 'Маршрут',
+                    'mapColor'    => $route && $route->mapColor ? $route->mapColor : 'FFB800',
+                ];
+            });
+ 
+        return response()->json([
+            'success' => true,
+            'data' => $events
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ошибка получения событий: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
 }

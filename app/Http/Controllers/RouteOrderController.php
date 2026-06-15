@@ -10,7 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
+use App\Mail\MailInvite;
+use Illuminate\Support\Facades\Mail;
 class RouteOrderController extends Controller
 {
 
@@ -62,95 +63,93 @@ class RouteOrderController extends Controller
 }
 
 
-    public function createBooking(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'eventId' => 'required|exists:routeOrder,id',
-            'firstName' => 'required|string|max:255',
-            'lastName' => 'required|string|max:255',
-            'seats' => 'required|integer|min:1|max:10',
-            'phone' => 'required|string|regex:/^[0-9+\-\s()]+$/',
-            'email' => 'required|email|max:255',
-            'userId' => 'required|integer', 
-        ], [
-            'eventId.required' => 'Не указано событие',
-            'eventId.exists' => 'Событие не найдено',
-            'firstName.required' => 'Введите имя',
-            'lastName.required' => 'Введите фамилию',
-            'seats.required' => 'Укажите количество мест',
-            'seats.min' => 'Минимум 1 место',
-            'seats.max' => 'Максимум 10 мест',
-            'phone.required' => 'Введите телефон',
-            'phone.regex' => 'Некорректный формат телефона',
-            'email.required' => 'Введите email',
-            'email.email' => 'Некорректный email',
-            'userId.required' => 'Не указан пользователь',
-        ]);
+public function createBooking(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'eventId' => 'required|exists:routeOrder,id',
+        'firstName' => 'required|string|max:255',
+        'lastName' => 'required|string|max:255',
+        'seats' => 'required|integer|min:1|max:10',
+        'phone' => 'required|string|regex:/^[0-9+\-\s()]+$/',
+        'email' => 'required|email|max:255',
+        'userId' => 'required|integer', 
+    ], [
+        'eventId.required' => 'Не указано событие',
+        'eventId.exists' => 'Событие не найдено',
+        'firstName.required' => 'Введите имя',
+        'lastName.required' => 'Введите фамилию',
+        'seats.required' => 'Укажите количество мест',
+        'seats.min' => 'Минимум 1 место',
+        'seats.max' => 'Максимум 10 мест',
+        'phone.required' => 'Введите телефон',
+        'phone.regex' => 'Некорректный формат телефона',
+        'email.required' => 'Введите email',
+        'email.email' => 'Некорректный email',
+        'userId.required' => 'Не указан пользователь',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $event = routeOrder::findOrFail($request->eventId);
-            
-           
-            $currentBooked = $event->ordered_users ?? 0;
-            $availableSeats = $event->max_users - $currentBooked;
-            
-            if ($request->seats > $availableSeats) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Недостаточно свободных мест. Доступно: {$availableSeats}"
-                ], 400);
-            }
-
-       
-            $booking = Booking::create([
-                'user_email' => $request->email,
-                'user_number' => $request->phone,
-                'uesr_name' => $request->firstName, 
-                'user_lastname' => $request->lastName,
-                'order_id' => $event->id,
-                'users' => $request->seats,
-                'user_id' => $request->userId, 
-            ]);
-
-          
-            $event->ordered_users = $currentBooked + $request->seats;
-            $event->save();
-
-            DB::commit();
-
-            // Здесь можно отправить email уведомление
-            // Mail::to($request->email)->send(new BookingConfirmation($booking));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Бронирование успешно создано',
-                'data' => [
-                    'bookingId' => $booking->id,
-                    'eventId' => $event->id,
-                    'bookedSeats' => $event->ordered_users,
-                    'totalSeats' => $event->max_users
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка создания бронирования: ' . $e->getMessage()
-            ], 500);
-        }
+    if ($validator->fails()) {
+        return response()->json([
+            'success' => false,
+            'errors' => $validator->errors()
+        ], 422);
     }
 
+    try {
+        DB::beginTransaction();
+
+        $event = routeOrder::findOrFail($request->eventId);
+        
+        $currentBooked = $event->ordered_users ?? 0;
+        $availableSeats = $event->max_users - $currentBooked;
+        
+        if ($request->seats > $availableSeats) {
+            return response()->json([
+                'success' => false,
+                'message' => "Недостаточно свободных мест. Доступно: {$availableSeats}"
+            ], 400);
+        }
+
+        $booking = Booking::create([
+            'user_email' => $request->email,
+            'user_number' => $request->phone,
+            'uesr_name' => $request->firstName, 
+            'user_lastname' => $request->lastName,
+            'order_id' => $event->id,
+            'users' => $request->seats,
+            'user_id' => $request->userId, 
+        ]);
+        
+        // Исправленная отправка почты с передачей event
+        if (!empty($request->email)) {
+            Mail::to($request->email)->send(new MailInvite($booking, $event));
+        }
+        
+        $event->ordered_users = $currentBooked + $request->seats;
+        $event->save();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Бронирование успешно создано',
+            'data' => [
+                'bookingId' => $booking->id,
+                'eventId' => $event->id,
+                'bookedSeats' => $event->ordered_users,
+                'totalSeats' => $event->max_users
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Ошибка создания бронирования: ' . $e->getMessage()
+        ], 500);
+    }
+}
 
     public function getEvent($eventId)
     {

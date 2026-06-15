@@ -131,6 +131,9 @@ import RouteDetails from './components/RouteDetails.vue'
 import favoritesPage from './components/favoritesPage.vue'
 import ReviewsComponent from './components/ReviewsComponent.vue'
 import { useAuthCheck } from './utils/useAuthCheck'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 const adminModalVisible = ref(false)
 // Используем composable правильно
 const { 
@@ -306,11 +309,15 @@ const currentRoutePoints = computed(() => {
 onMounted(async () => {
   await fetchRoutes()
   
-  // Проверяем токен и загружаем данные пользователя
-  const hasToken = checkToken()
+  // Проверяем, есть ли routeId в URL
+  if (route.query.routeId) {
+    const routeId = parseInt(route.query.routeId)
+    selectedRouteId.value = routeId
+    currentPage.value = 'RouteDetails.vue'
+  }
   
+  const hasToken = checkToken()
   if (hasToken) {
-    // Проверяем валидность токена и загружаем данные пользователя
     await checkAuth()
   }
 })

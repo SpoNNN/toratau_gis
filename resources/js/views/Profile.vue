@@ -1,20 +1,15 @@
 <template>
   <div class="profile-page">
-    <Header2
-      :isLoggedIn="isLoggedIn"
-      @navigateToWay="$router.push('/')"
-      @navigateToFavorites="$router.push('/favorites')"
-      @navigateToRegister="$router.push('/register')"
-      @navigateToLogin="$router.push('/signin')"
-      @logout="handleSignOut"
-    />
+    <Header2 :isLoggedIn="isLoggedIn" @navigateToWay="$router.push('/')"
+      @navigateToFavorites="$router.push('/favorites')" @navigateToRegister="$router.push('/register')"
+      @navigateToLogin="$router.push('/signin')" @logout="handleSignOut" />
 
     <div class="profile-container">
-       <h1 class="welcome-greeting"> Здравствуйте, {{ userName }}!</h1>
+      <h1 class="welcome-greeting"> Здравствуйте, {{ userName }}!</h1>
       <div v-if="isLoading" class="loading">Загрузка...</div>
 
       <div v-else class="profile-content">
-       
+
         <div class="profile-main">
           <div class="tabs">
             <button class="tab" :class="{ active: activeTab === 'favorites' }" @click="activeTab = 'favorites'">
@@ -39,15 +34,18 @@
                   <div class="booking-badge">Вы записаны на {{ booking.event.date }}</div>
                   <div class="booking-seats">Количество мест: {{ booking.seats }}</div>
                 </div>
-                <div class="route-card" :style="{ backgroundColor: colorMap[booking.route.mapColor] || colorMap.default }">
+                <div class="route-card"
+                  :style="{ backgroundColor: colorMap[booking.route.mapColor] || colorMap.default }">
                   <div class="route-info">
                     <h3>{{ booking.route.title }}</h3>
                     <p class="booking-time">Время: {{ booking.event.time }}</p>
                     <p class="booking-location">Место встречи: {{ booking.event.location }}</p>
                   </div>
                 </div>
-                <div class="booking-actions">
-                  <button class="btn-secondary" @click.stop>Перейти к маршруту</button>
+                <div class="booking-actions"><button class="btn-secondary"
+                    @click.stop="router.push('/?routeId=' + booking.route.id)">
+                    Перейти к маршруту
+                  </button>
                   <button class="btn-cancel" @click.stop="cancelBooking(booking.id)">Отменить бронь</button>
                 </div>
               </div>
@@ -57,12 +55,8 @@
             </div>
 
             <div v-else-if="activeTab === 'reviews'">
-              <div
-                v-for="route in reviewedRoutes"
-                :key="route.id"
-                class="route-card review-card"
-                :style="{ backgroundColor: route.mapColor ? '#' + route.mapColor : '#4F46E5' }"
-              >
+              <div v-for="route in reviewedRoutes" :key="route.id" class="route-card review-card"
+                :style="{ backgroundColor: route.mapColor ? '#' + route.mapColor : '#4F46E5' }">
                 <div class="route-info">
                   <h3>{{ route.title }}</h3>
                   <div class="review-info">
@@ -71,13 +65,9 @@
                     <p class="review-date">{{ formatDate(route.created_at) }}</p>
                   </div>
                 </div>
-                <button
-                  class="delete-review-btn"
-                  @click.stop="deleteReview(route.reviewId)"
-                  title="Удалить отзыв"
-                >
+                <button class="delete-review-btn" @click.stop="deleteReview(route.reviewId)" title="Удалить отзыв">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                   </svg>
                 </button>
               </div>
@@ -87,23 +77,17 @@
             </div>
 
             <div v-else>
-              <div
-                v-for="route in filteredRoutes"
-                :key="route.id"
-                class="route-card"
-                :style="{ backgroundColor: route.color }"
-              >
+              <div v-for="route in filteredRoutes" :key="route.id" class="route-card"
+                :style="{ backgroundColor: route.color }">
                 <div class="route-info">
                   <h3>{{ route.title }}</h3>
                   <p v-if="activeTab !== 'reviews'">{{ route.subtitle }}</p>
                 </div>
-                <button
-                  v-if="activeTab === 'favorites'"
-                  class="favorite-btn active"
-                  @click.stop="toggleFavorite(route.id)"
-                >
+                <button v-if="activeTab === 'favorites'" class="favorite-btn active"
+                  @click.stop="toggleFavorite(route.id)">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    <path
+                      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                   </svg>
                 </button>
               </div>
@@ -133,7 +117,7 @@ const isLoading = ref(false)
 const user = ref<any>(null)
 const activeTab = ref('favorites')
 
-const userName = computed(()=>{
+const userName = computed(() => {
   if (user.value?.name) {
     return user.value.name
   }
@@ -150,8 +134,8 @@ interface Route {
 }
 
 interface ReviewRoute {
-  id: number         
-  reviewId: number  
+  id: number
+  reviewId: number
   title: string
   mapColor: string | null
   rating: number
@@ -188,8 +172,8 @@ const historyRoutes = ref<Route[]>([])
 const filteredRoutes = computed(() => {
   switch (activeTab.value) {
     case 'favorites': return favoriteRoutes.value
-    case 'history':   return historyRoutes.value
-    default:          return []
+    case 'history': return historyRoutes.value
+    default: return []
   }
 })
 
@@ -245,9 +229,9 @@ const fetchUserReviews = async () => {
       const r = review.route
       return {
         id: r.id,
-        reviewId: review.id,      
+        reviewId: review.id,
         title: r.title,
-        mapColor: r.mapColor, 
+        mapColor: r.mapColor,
         slug: r.slug,
         rating: review.rating,
         comment: review.comment,
@@ -307,7 +291,7 @@ const cancelBooking = async (bookingId: number) => {
 const handleSignOut = async () => {
   try {
     await axios.post('/logout')
-  } catch {}
+  } catch { }
   finally {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('user')
@@ -329,8 +313,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-
-.welcome-greeting{
+.welcome-greeting {
   font-size: 27px;
   font-weight: 600;
   color: #1F2937;
@@ -341,6 +324,7 @@ onMounted(async () => {
   padding: 0;
   background: transparent;
 }
+
 .profile-page {
   min-height: 100vh;
   background: #E5E7EB;
@@ -393,7 +377,10 @@ onMounted(async () => {
   line-height: 1.4;
 }
 
-.tab:hover { background: #F3F4F6; color: #374151; }
+.tab:hover {
+  background: #F3F4F6;
+  color: #374151;
+}
 
 .tab.active {
   background: white;
@@ -457,7 +444,9 @@ onMounted(async () => {
   transition: all 0.3s ease;
 }
 
-.route-info { flex: 1; }
+.route-info {
+  flex: 1;
+}
 
 .route-info h3 {
   margin: 0 0 8px 0;
@@ -491,9 +480,21 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.review-rating { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-.review-comment { margin: 4px 0; }
-.review-date { margin: 4px 0 0; font-size: 12px; opacity: 0.8; }
+.review-rating {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.review-comment {
+  margin: 4px 0;
+}
+
+.review-date {
+  margin: 4px 0 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
 
 /* Delete review button */
 .delete-review-btn {
@@ -538,10 +539,23 @@ onMounted(async () => {
   border: none;
 }
 
-.btn-secondary { background: #4F46E5; color: white; }
-.btn-secondary:hover { background: #4338CA; }
-.btn-cancel { background: #FEE2E2; color: #DC2626; }
-.btn-cancel:hover { background: #FCA5A5; }
+.btn-secondary {
+  background: #4F46E5;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #4338CA;
+}
+
+.btn-cancel {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.btn-cancel:hover {
+  background: #FCA5A5;
+}
 
 /* Favorite button */
 .favorite-btn {
@@ -560,8 +574,14 @@ onMounted(async () => {
   margin-left: 16px;
 }
 
-.favorite-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.1); }
-.favorite-btn.active { background: rgba(255, 255, 255, 0.3); }
+.favorite-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.favorite-btn.active {
+  background: rgba(255, 255, 255, 0.3);
+}
 
 .empty-state {
   text-align: center;
@@ -569,20 +589,62 @@ onMounted(async () => {
   color: #6B7280;
 }
 
-.empty-state p { font-size: 16px; margin: 0; }
+.empty-state p {
+  font-size: 16px;
+  margin: 0;
+}
 
-.routes-list::-webkit-scrollbar { width: 8px; }
-.routes-list::-webkit-scrollbar-track { background: #F3F4F6; border-radius: 4px; }
-.routes-list::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
-.routes-list::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+.routes-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.routes-list::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 4px;
+}
+
+.routes-list::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
+}
+
+.routes-list::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
 
 @media (max-width: 768px) {
-  .profile-content { flex-direction: column; }
-  .tabs { overflow-x: auto; }
-  .tab { white-space: nowrap; min-width: 120px; }
-  .booking-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .booking-actions { flex-direction: column; }
-  .route-card { flex-direction: column; text-align: center; gap: 12px; }
-  .favorite-btn, .delete-review-btn { margin-left: 0; }
+  .profile-content {
+    flex-direction: column;
+  }
+
+  .tabs {
+    overflow-x: auto;
+  }
+
+  .tab {
+    white-space: nowrap;
+    min-width: 120px;
+  }
+
+  .booking-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .booking-actions {
+    flex-direction: column;
+  }
+
+  .route-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .favorite-btn,
+  .delete-review-btn {
+    margin-left: 0;
+  }
 }
 </style>

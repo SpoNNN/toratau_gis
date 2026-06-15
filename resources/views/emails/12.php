@@ -9,7 +9,6 @@
         .btn-confirm { background: #22c55e; color: white; }
         .btn-reject  { background: #ef4444; color: white; }
         .info { background: #f3f4f6; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
-        .visit-time { color: #22c55e; font-size: 18px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -17,10 +16,9 @@
 
     <div class="info">
         <p><strong>Маршрут:</strong> {{ $requestPoint->request->route->title }}</p>
-        <p><strong>Дата:</strong> {{ \Carbon\Carbon::parse($requestPoint->request->proposed_date)->format('d.m.Y') }}</p>
-        <p><strong>Время начала маршрута:</strong> {{ \Carbon\Carbon::parse($requestPoint->request->start_time)->format('H:i') }}</p>
-        <p><strong>🕐 Ваше время посещения:</strong> <span class="visit-time">{{ $visitTime }}</span></p>
-        <p><strong>Дедлайн голосования:</strong> {{ \Carbon\Carbon::parse($requestPoint->request->deadline)->format('d.m.Y H:i') }}</p>
+        <p><strong>Дата:</strong> {{ $requestPoint->request->proposed_date->format('d.m.Y') }}</p>
+        <p><strong>Время начала:</strong> {{ $requestPoint->request->start_time }}</p>
+        <p><strong>Дедлайн:</strong> {{ $requestPoint->request->deadline->format('d.m.Y H:i') }}</p>
     </div>
 
     <p>Пожалуйста, примите решение по согласованию:</p>
@@ -34,7 +32,7 @@
     </div>
 
     <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">
-        Ссылка действительна до {{ \Carbon\Carbon::parse($requestPoint->request->deadline)->format('d.m.Y H:i') }}
+        Ссылка действительна до {{ $requestPoint->request->deadline->format('d.m.Y H:i') }}
     </p>
 </body>
 </html>
